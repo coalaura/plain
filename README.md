@@ -22,7 +22,7 @@ func main() {
 	pl.Warnln("Hello from Warn")
 	pl.Errorln("Hello from Error")
 
-	input, err := pl.Read(os.Stdin, "Input: ", 10)
+	input, err := pl.Read(os.Stdin, "Input: ", 64)
 	pl.MustFail(err)
 
 	pl.Printf("You entered '%s'\n", input)
