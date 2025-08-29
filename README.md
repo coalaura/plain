@@ -1,6 +1,6 @@
 # plain
 
-A tiny, dependency-free logger for Go with a couple of handy input helpers.
+A tiny logger for Go with a couple of handy input helpers.
 
 ### Install
 ```bash

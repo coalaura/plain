@@ -1,6 +1,7 @@
 package plain
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"strings"
@@ -8,17 +9,33 @@ import (
 
 // Read displays a prompt, waits for user input from the provided io.Reader and returns the entered text (trimmed of surrounding whitespace).
 func (p *Plain) Read(in io.Reader, prompt string, max int) (string, error) {
-	p.Write(Text, prompt, false)
-	p.Write(Input, "", false)
+	buf := pool.Get().(*bytes.Buffer)
+	defer pool.Put(buf)
 
-	buf := make([]byte, max)
+	buf.Reset()
 
-	n, err := in.Read(buf)
+	if p.color {
+		buf.WriteString(Text)
+	}
+
+	buf.WriteString(prompt)
+
+	if p.color {
+		buf.WriteString(Input)
+
+		defer buf.WriteString(Reset)
+	}
+
+	p.out.Write(buf.Bytes())
+
+	res := make([]byte, max)
+
+	n, err := in.Read(res)
 	if err != nil {
 		return "", err
 	}
 
-	return strings.TrimSpace(string(buf[:n])), nil
+	return strings.TrimSpace(string(res[:n])), nil
 }
 
 // Select displays a prompt followed by a cyclic selector UI, allowing the user to navigate through a list of options using arrow keys and confirm the selection by pressing Enter.
