@@ -16,7 +16,7 @@ import (
 )
 
 func main() {
-	pl := plain.New(os.Stdout)
+	pl := plain.New(plain.WithDate(plain.RFC3339Local))
 
 	pl.Println("Hello from Print")
 	pl.Warnln("Hello from Warn")
