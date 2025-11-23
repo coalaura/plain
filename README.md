@@ -18,6 +18,7 @@ import (
 func main() {
 	pl := plain.New(plain.WithDate(plain.RFC3339Local))
 
+	pl.Debugln("Hello from Debug")
 	pl.Println("Hello from Print")
 	pl.Warnln("Hello from Warn")
 	pl.Errorln("Hello from Error")

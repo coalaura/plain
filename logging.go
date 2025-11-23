@@ -4,19 +4,34 @@ import (
 	"os"
 )
 
+// Debugf formats according to a format specifier and writes to the target output as a debug log.
+func (p *Plain) Debugf(format string, a ...any) {
+	p.Write(Dimmed, sprintf(format, a...), true)
+}
+
+// Debug formats using the default formats for its operands and writes to the target output as a debug log.
+func (p *Plain) Debug(a ...any) {
+	p.Write(Dimmed, sprint(a...), true)
+}
+
+// Debugln formats using the default formats for its operands and writes to the target output as a debug log with a trailing newline.
+func (p *Plain) Debugln(a ...any) {
+	p.Write(Dimmed, sprint(a...)+"\n", true)
+}
+
 // Printf formats according to a format specifier and writes to the target output.
 func (p *Plain) Printf(format string, a ...any) {
-	p.Write(Text, sprintf(format, a...), true)
+	p.Write(Reset, sprintf(format, a...), true)
 }
 
 // Print formats using the default formats for its operands and writes to the target output.
 func (p *Plain) Print(a ...any) {
-	p.Write(Text, sprint(a...), true)
+	p.Write(Reset, sprint(a...), true)
 }
 
 // Println formats using the default formats for its operands and writes to the target output with a trailing newline.
 func (p *Plain) Println(a ...any) {
-	p.Write(Text, sprint(a...)+"\n", true)
+	p.Write(Reset, sprint(a...)+"\n", true)
 }
 
 // Warnf formats according to a format specifier and writes to the target output as a warning.

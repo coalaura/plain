@@ -9,6 +9,7 @@ import (
 func main() {
 	pl := plain.New()
 
+	pl.Debugln("Hello from Debug")
 	pl.Println("Hello from Print")
 	pl.Warnln("Hello from Warn")
 	pl.Errorln("Hello from Error")
