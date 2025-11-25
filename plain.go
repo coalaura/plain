@@ -3,11 +3,10 @@ package plain
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"os"
 	"sync"
 	"time"
-
-	"golang.org/x/term"
 )
 
 const (
@@ -26,13 +25,13 @@ const (
 )
 
 type Plain struct {
-	out    *os.File
+	out    io.Writer
 	color  bool
 	format string
 }
 
 var pool = sync.Pool{
-	New: func() interface{} {
+	New: func() any {
 		return &bytes.Buffer{}
 	},
 }
@@ -46,7 +45,7 @@ func New(opts ...option) *Plain {
 		opt(p)
 	}
 
-	p.color = term.IsTerminal(int(p.out.Fd()))
+	p.color = isWriterTerminal(p.out)
 
 	return p
 }

@@ -1,9 +1,11 @@
 package plain
 
 import (
+	"io"
 	"os"
 
 	"github.com/containerd/console"
+	"golang.org/x/term"
 )
 
 const (
@@ -20,6 +22,10 @@ type terminal struct {
 	*os.File
 }
 
+type fdGetter interface {
+	Fd() uintptr
+}
+
 func readArrow() (int, error) {
 	t, err := openTTY()
 	if err != nil {
@@ -31,6 +37,18 @@ func readArrow() (int, error) {
 	t.Close()
 
 	return i, err
+}
+
+func isWriterTerminal(writer io.Writer) bool {
+	if f, ok := writer.(*os.File); ok {
+		return term.IsTerminal(int(f.Fd()))
+	}
+
+	if f, ok := writer.(fdGetter); ok {
+		return term.IsTerminal(int(f.Fd()))
+	}
+
+	return false
 }
 
 func (t *terminal) Close() error {

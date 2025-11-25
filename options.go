@@ -1,10 +1,10 @@
 package plain
 
-import "os"
+import "io"
 
 type option func(*Plain)
 
-func WithTarget(out *os.File) option {
+func WithTarget(out io.Writer) option {
 	return func(p *Plain) {
 		p.out = out
 	}
