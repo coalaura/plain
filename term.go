@@ -30,6 +30,10 @@ type fdGetter interface {
 	Fd() uintptr
 }
 
+type closer interface {
+	Close() error
+}
+
 func readArrow() (int, error) {
 	t, err := openTTY()
 	if err != nil {

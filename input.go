@@ -20,6 +20,9 @@ func (p *Plain) Read(in io.Reader, prompt string, max int) (string, error) {
 
 	if p.color {
 		buf = append(buf, p.theme.Input...)
+
+		p.reset.Add(1)
+		defer p.reset.Add(^uint32(0))
 	}
 
 	p.out.Write(buf)
@@ -85,6 +88,10 @@ func (p *Plain) Select(prompt string, options []string) (int, error) {
 		}
 
 		length = len(label)
+
+		if p.color {
+			buf = append(buf, Reset...)
+		}
 
 		p.out.Write(buf)
 

@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"golang.org/x/term"
@@ -27,7 +28,8 @@ type Theme struct {
 }
 
 type Plain struct {
-	out io.Writer
+	out   io.Writer
+	reset atomic.Uint32
 
 	color bool
 	mode  int
@@ -99,6 +101,21 @@ func (p *Plain) Write(code, msg string, reset, nl bool) {
 	*bp = buf
 
 	pool.Put(bp)
+}
+
+func (p *Plain) Close() error {
+	if p.reset.Load() != 0 {
+		p.out.Write([]byte(Reset))
+	}
+
+	if cl, ok := p.out.(closer); ok {
+		err := cl.Close()
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (p *Plain) appendHeader(dst []byte, code string) []byte {
