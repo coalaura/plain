@@ -1,14 +1,15 @@
 package plain
 
 import (
-	"bytes"
-	"net"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/felixge/httpsnoop"
 )
+
+const padding = "      "
 
 func (p *Plain) Middleware() func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
@@ -21,104 +22,123 @@ func (p *Plain) Middleware() func(http.Handler) http.Handler {
 }
 
 func (p *Plain) LogRequest(request *http.Request, metrics *httpsnoop.Metrics) {
-	buf := pool.Get().(*bytes.Buffer)
-	defer pool.Put(buf)
+	bp := pool.Get().(*[]byte)
+	defer pool.Put(bp)
 
-	buf.Reset()
+	buf := *bp
+	buf = buf[:0]
 
-	p.writeHeader(buf, Reset)
+	buf = p.appendHeader(buf, Reset)
 
 	if p.color {
-		buf.WriteString(p.theme.Highlight)
+		buf = append(buf, p.theme.Highlight...)
 	}
 
 	method := request.Method
-
-	buf.WriteString(method)
+	buf = append(buf, method...)
 
 	if p.color {
-		buf.WriteString(Reset)
+		buf = append(buf, Reset...)
 	}
 
-	for i := len(method); i < 6; i++ {
-		buf.WriteByte(' ')
+	l := len(method)
+	if l < 6 {
+		buf = append(buf, padding[:6-l]...)
 	}
 
-	buf.WriteByte(' ')
+	buf = append(buf, ' ')
 
-	if path := request.URL.EscapedPath(); path != "" {
-		buf.WriteString(path)
+	path := request.URL.EscapedPath()
+	if path != "" {
+		buf = append(buf, path...)
 	} else {
-		buf.WriteByte('/')
+		buf = append(buf, '/')
 	}
 
-	buf.WriteByte(' ')
+	buf = append(buf, ' ')
 
 	status := metrics.Code
 
 	if p.color {
 		switch {
 		case status >= 200 && status <= 299:
-			buf.WriteString(p.theme.Success)
+			buf = append(buf, p.theme.Success...)
 		case status >= 300 && status <= 399:
-			buf.WriteString(p.theme.Highlight)
+			buf = append(buf, p.theme.Highlight...)
 		case status >= 400 && status <= 499:
-			buf.WriteString(p.theme.Warn)
+			buf = append(buf, p.theme.Warn...)
 		case status >= 500 && status <= 599:
-			buf.WriteString(p.theme.Error)
+			buf = append(buf, p.theme.Error...)
 		}
 	}
 
 	if status < 100 || status > 999 {
-		buf.WriteString("???")
+		buf = append(buf, "??"...)
 	} else {
-		buf.WriteByte('0' + byte(status/100))
-		buf.WriteByte('0' + byte((status/10)%10))
-		buf.WriteByte('0' + byte(status%10))
+		buf = append(buf, '0'+byte(status/100))
+		buf = append(buf, '0'+byte((status/10)%10))
+		buf = append(buf, '0'+byte(status%10))
 	}
 
 	if p.color {
-		buf.WriteString(Reset)
+		buf = append(buf, Reset...)
 	}
 
-	buf.WriteByte(' ')
+	buf = append(buf, ' ')
 
-	writeDuration(buf, metrics.Duration)
-
-	buf.WriteByte(' ')
+	buf = appendDuration(buf, metrics.Duration)
+	buf = append(buf, ' ')
 
 	if p.color {
-		buf.WriteString(p.theme.Dimmed)
+		buf = append(buf, p.theme.Dimmed...)
 	}
 
-	addr, _, _ := net.SplitHostPort(request.RemoteAddr)
+	addr := request.RemoteAddr
 
-	buf.WriteString(addr)
+	idx := strings.LastIndexByte(addr, ':')
+	if idx != -1 {
+		addr = addr[:idx]
+	}
+
+	buf = append(buf, addr...)
 
 	if p.color {
-		buf.WriteString(Reset)
+		buf = append(buf, Reset...)
 	}
 
-	buf.WriteByte('\n')
+	buf = append(buf, '\n')
 
-	p.out.Write(buf.Bytes())
+	p.out.Write(buf)
+
+	if cap(buf) > 4096 {
+		return
+	}
+
+	*bp = buf
+
+	pool.Put(bp)
 }
 
-func writeDuration(buf *bytes.Buffer, dur time.Duration) {
+func appendDuration(dst []byte, dur time.Duration) []byte {
 	if dur < time.Microsecond {
-		buf.WriteString(strconv.FormatInt(dur.Nanoseconds(), 10))
-		buf.WriteString("ns")
+		dst = strconv.AppendInt(dst, dur.Nanoseconds(), 10)
+
+		return append(dst, "ns"...)
 	} else if dur < time.Millisecond {
-		buf.WriteString(strconv.FormatInt(dur.Microseconds(), 10))
-		buf.WriteString("µs")
+		dst = strconv.AppendInt(dst, dur.Microseconds(), 10)
+
+		return append(dst, "µs"...)
 	} else if dur < time.Second {
-		buf.WriteString(strconv.FormatInt(dur.Milliseconds(), 10))
-		buf.WriteString("ms")
+		dst = strconv.AppendInt(dst, dur.Milliseconds(), 10)
+
+		return append(dst, "ms"...)
 	} else if dur < time.Minute {
-		buf.WriteString(strconv.FormatInt(dur.Milliseconds()/1000, 10))
-		buf.WriteByte('s')
-	} else {
-		buf.WriteString(strconv.FormatInt(dur.Milliseconds()/1000/60, 10))
-		buf.WriteByte('m')
+		dst = strconv.AppendInt(dst, int64(dur.Seconds()), 10)
+
+		return append(dst, 's')
 	}
+
+	dst = strconv.AppendInt(dst, int64(dur.Minutes()), 10)
+
+	return append(dst, 'm')
 }

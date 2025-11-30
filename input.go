@@ -1,56 +1,92 @@
 package plain
 
 import (
-	"bytes"
 	"fmt"
 	"io"
 	"strings"
+	"time"
 )
 
-// Read displays a prompt, waits for user input from the provided io.Reader and returns the entered text (trimmed of surrounding whitespace).
+// Read displays a prompt aligned with the logger's format.
 func (p *Plain) Read(in io.Reader, prompt string, max int) (string, error) {
-	buf := pool.Get().(*bytes.Buffer)
-	defer pool.Put(buf)
+	bp := pool.Get().(*[]byte)
 
-	buf.Reset()
+	buf := *bp
+	buf = buf[:0]
 
-	if p.color {
-		buf.WriteString(Reset)
-	}
+	buf = p.appendPadding(buf)
 
-	buf.WriteString(prompt)
+	buf = append(buf, prompt...)
 
 	if p.color {
-		buf.WriteString(p.theme.Input)
-
-		defer buf.WriteString(Reset)
+		buf = append(buf, p.theme.Input...)
 	}
 
-	p.out.Write(buf.Bytes())
+	p.out.Write(buf)
 
 	res := make([]byte, max)
 
 	n, err := in.Read(res)
+
+	if cap(buf) < 4096 {
+		*bp = buf
+
+		pool.Put(bp)
+	}
+
 	if err != nil {
 		return "", err
 	}
 
+	p.out.Write([]byte(Reset))
+
 	return strings.TrimSpace(string(res[:n])), nil
 }
 
-// Select displays a prompt followed by a cyclic selector UI, allowing the user to navigate through a list of options using arrow keys and confirm the selection by pressing Enter.
+// Select displays a cyclic selector aligned with the logger's format.
 func (p *Plain) Select(prompt string, options []string) (int, error) {
 	var (
 		index  int
 		length int
 	)
 
-	for {
-		label := fmt.Sprint(options[index])
+	bp := pool.Get().(*[]byte)
+	defer pool.Put(bp)
 
-		p.Printf("\r%s%s%-*s", prompt, p.theme.Input, length, label)
+	for {
+		buf := *bp
+		buf = buf[:0]
+
+		label := options[index]
+
+		buf = append(buf, '\r')
+
+		buf = p.appendPadding(buf)
+
+		if p.color {
+			buf = append(buf, Reset...)
+		}
+
+		buf = append(buf, prompt...)
+
+		if p.color {
+			buf = append(buf, p.theme.Input...)
+		}
+
+		buf = append(buf, label...)
+
+		l := len(label)
+		if l < length {
+			remaining := length - l
+
+			for range remaining {
+				buf = append(buf, ' ')
+			}
+		}
 
 		length = len(label)
+
+		p.out.Write(buf)
 
 		i, err := readArrow()
 		if err != nil {
@@ -71,11 +107,29 @@ func (p *Plain) Select(prompt string, options []string) (int, error) {
 				index = len(options) - 1
 			}
 		case enter:
-			p.Println()
+			p.out.Write([]byte("\n"))
 
 			return index, nil
 		}
 	}
+}
+
+func (p *Plain) appendPadding(dst []byte) []byte {
+	if p.format == "" {
+		return dst
+	}
+
+	start := len(dst)
+
+	dst = time.Now().AppendFormat(dst, p.format)
+
+	for i := start; i < len(dst); i++ {
+		dst[i] = ' '
+	}
+
+	dst = append(dst, ' ')
+
+	return dst
 }
 
 // AsStrings converts a slice/array of any type to a slice of strings

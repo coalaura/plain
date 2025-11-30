@@ -1,7 +1,6 @@
 package plain
 
 import (
-	"bytes"
 	"fmt"
 	"io"
 	"os"
@@ -40,7 +39,8 @@ type Plain struct {
 
 var pool = sync.Pool{
 	New: func() any {
-		return &bytes.Buffer{}
+		b := make([]byte, 0, 512)
+		return &b
 	},
 }
 
@@ -59,22 +59,11 @@ func New(opts ...option) *Plain {
 		p.mode = detectColorLevel(fd)
 		p.color = p.mode > ModeNone
 
-		// Dimmed: Steel Gray (Timestamp/Meta)
 		p.theme.Dimmed = color(p.mode, "\x1b[90m", c256(244), rgb(145, 145, 145))
-
-		// Success: Soft Mint / Pastel Green
 		p.theme.Success = color(p.mode, "\x1b[32m", c256(114), rgb(120, 210, 130))
-
-		// Highlight: Sky Blue
 		p.theme.Highlight = color(p.mode, "\x1b[94m", c256(111), rgb(100, 180, 255))
-
-		// Input: Soft Cyan / Teal
 		p.theme.Input = color(p.mode, "\x1b[36m", c256(152), rgb(130, 220, 220))
-
-		// Warn: Soft Orange / Amber
-		p.theme.Warn = color(p.mode, "\x1b[33m", c256(215), rgb(255, 178, 90))
-
-		// Error: Pastel Red / Coral
+		p.theme.Warn = color(p.mode, "\x1b[33m", c256(215), rgb(255, 190, 80))
 		p.theme.Error = color(p.mode, "\x1b[31m", c256(210), rgb(255, 110, 110))
 	} else {
 		p.mode = ModeNone
@@ -83,43 +72,61 @@ func New(opts ...option) *Plain {
 	return p
 }
 
-func (p *Plain) Write(code, msg string, reset bool) {
-	buf := pool.Get().(*bytes.Buffer)
-	defer pool.Put(buf)
+func (p *Plain) Write(code, msg string, reset, nl bool) {
+	bp := pool.Get().(*[]byte)
 
-	buf.Reset()
+	buf := *bp
+	buf = buf[:0]
 
-	p.writeHeader(buf, code)
+	buf = p.appendHeader(buf, code)
 
-	buf.WriteString(msg)
+	buf = append(buf, msg...)
 
 	if p.color && reset {
-		buf.WriteString(Reset)
+		buf = append(buf, Reset...)
 	}
 
-	p.out.Write(buf.Bytes())
-}
+	if nl {
+		buf = append(buf, '\n')
+	}
 
-func (p *Plain) writeHeader(buf *bytes.Buffer, code string) {
-	if p.format == "" {
-		if p.color {
-			buf.WriteString(code)
-		}
+	p.out.Write(buf)
 
+	if cap(buf) > 4096 {
 		return
 	}
 
-	if p.color {
-		buf.WriteString(p.theme.Dimmed)
+	*bp = buf
+
+	pool.Put(bp)
+}
+
+func (p *Plain) appendHeader(dst []byte, code string) []byte {
+	if p.format == "" {
+		if p.color {
+			dst = append(dst, code...)
+		}
+
+		return dst
 	}
 
-	buf.WriteString(time.Now().Format(p.format))
-
 	if p.color {
-		buf.WriteString(code)
+		dst = append(dst, p.theme.Dimmed...)
 	}
 
-	buf.WriteByte(' ')
+	dst = time.Now().AppendFormat(dst, p.format)
+
+	if p.color {
+		if code != "" {
+			dst = append(dst, code...)
+		} else {
+			dst = append(dst, Reset...)
+		}
+	}
+
+	dst = append(dst, ' ')
+
+	return dst
 }
 
 func sprint(a ...any) string {
