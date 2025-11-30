@@ -5,7 +5,6 @@ import (
 	"os"
 
 	"github.com/containerd/console"
-	"golang.org/x/term"
 )
 
 const (
@@ -15,6 +14,11 @@ const (
 	arrowLeft
 	arrowRight
 	enter
+
+	ModeNone = iota - 1
+	ModeSome
+	Mode8Bit
+	ModeFull
 )
 
 type terminal struct {
@@ -39,16 +43,16 @@ func readArrow() (int, error) {
 	return i, err
 }
 
-func isWriterTerminal(writer io.Writer) bool {
+func getWriterFd(writer io.Writer) (int, bool) {
 	if f, ok := writer.(*os.File); ok {
-		return term.IsTerminal(int(f.Fd()))
+		return int(f.Fd()), true
 	}
 
 	if f, ok := writer.(fdGetter); ok {
-		return term.IsTerminal(int(f.Fd()))
+		return int(f.Fd()), true
 	}
 
-	return false
+	return 0, false
 }
 
 func (t *terminal) Close() error {

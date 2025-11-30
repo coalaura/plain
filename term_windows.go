@@ -6,6 +6,7 @@ package plain
 import (
 	"fmt"
 	"os"
+	"strings"
 	"syscall"
 	"unsafe"
 
@@ -22,6 +23,44 @@ var (
 	procGetConsoleCursorInfo = kernel32.NewProc("GetConsoleCursorInfo")
 	procSetConsoleCursorInfo = kernel32.NewProc("SetConsoleCursorInfo")
 )
+
+const (
+	enableVirtualTerminalProcessing = 0x0004
+)
+
+func detectColorLevel(fd int) int {
+	if os.Getenv("NO_COLOR") != "" {
+		return ModeNone
+	}
+
+	if os.Getenv("WT_SESSION") != "" || os.Getenv("COLORTERM") == "truecolor" {
+		return ModeFull
+	}
+
+	termVal := os.Getenv("TERM")
+	if strings.Contains(termVal, "256") {
+		return ModeFull
+	}
+
+	if termVal == "xterm" || termVal == "cygwin" {
+		return ModeSome
+	}
+
+	handle := syscall.Handle(fd)
+
+	var mode uint32
+
+	err := syscall.GetConsoleMode(handle, &mode)
+	if err != nil {
+		return ModeNone
+	}
+
+	if mode&enableVirtualTerminalProcessing == 0 {
+		return ModeNone
+	}
+
+	return ModeSome
+}
 
 func openTTY() (*terminal, error) {
 	f, err := os.OpenFile("CONIN$", os.O_RDWR, 0644)

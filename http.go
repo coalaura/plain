@@ -26,10 +26,10 @@ func (p *Plain) LogRequest(request *http.Request, metrics *httpsnoop.Metrics) {
 
 	buf.Reset()
 
-	p.writeHeader(buf, Text)
+	p.writeHeader(buf, Reset)
 
 	if p.color {
-		buf.WriteString(Highlight)
+		buf.WriteString(p.theme.Highlight)
 	}
 
 	method := request.Method
@@ -37,7 +37,7 @@ func (p *Plain) LogRequest(request *http.Request, metrics *httpsnoop.Metrics) {
 	buf.WriteString(method)
 
 	if p.color {
-		buf.WriteString(Text)
+		buf.WriteString(Reset)
 	}
 
 	for i := len(method); i < 6; i++ {
@@ -59,13 +59,13 @@ func (p *Plain) LogRequest(request *http.Request, metrics *httpsnoop.Metrics) {
 	if p.color {
 		switch {
 		case status >= 200 && status <= 299:
-			buf.WriteString(Success)
+			buf.WriteString(p.theme.Success)
 		case status >= 300 && status <= 399:
-			buf.WriteString(Highlight)
+			buf.WriteString(p.theme.Highlight)
 		case status >= 400 && status <= 499:
-			buf.WriteString(Warn)
+			buf.WriteString(p.theme.Warn)
 		case status >= 500 && status <= 599:
-			buf.WriteString(Error)
+			buf.WriteString(p.theme.Error)
 		}
 	}
 
@@ -78,7 +78,7 @@ func (p *Plain) LogRequest(request *http.Request, metrics *httpsnoop.Metrics) {
 	}
 
 	if p.color {
-		buf.WriteString(Text)
+		buf.WriteString(Reset)
 	}
 
 	buf.WriteByte(' ')
@@ -88,7 +88,7 @@ func (p *Plain) LogRequest(request *http.Request, metrics *httpsnoop.Metrics) {
 	buf.WriteByte(' ')
 
 	if p.color {
-		buf.WriteString(Dimmed)
+		buf.WriteString(p.theme.Dimmed)
 	}
 
 	addr, _, _ := net.SplitHostPort(request.RemoteAddr)

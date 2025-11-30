@@ -6,9 +6,32 @@ package plain
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/containerd/console"
 )
+
+func detectColorLevel(_ int) int {
+	if os.Getenv("NO_COLOR") != "" {
+		return ModeNone
+	}
+
+	termVal := os.Getenv("TERM")
+	if termVal == "dumb" {
+		return ModeNone
+	}
+
+	colorTerm := os.Getenv("COLORTERM")
+	if colorTerm == "truecolor" || colorTerm == "24bit" {
+		return ModeFull
+	}
+
+	if strings.Contains(termVal, "256") {
+		return Mode8Bit
+	}
+
+	return ModeSome
+}
 
 func openTTY() (*terminal, error) {
 	f, err := os.OpenFile("/dev/tty", os.O_RDWR, 0644)

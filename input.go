@@ -15,13 +15,13 @@ func (p *Plain) Read(in io.Reader, prompt string, max int) (string, error) {
 	buf.Reset()
 
 	if p.color {
-		buf.WriteString(Text)
+		buf.WriteString(Reset)
 	}
 
 	buf.WriteString(prompt)
 
 	if p.color {
-		buf.WriteString(Input)
+		buf.WriteString(p.theme.Input)
 
 		defer buf.WriteString(Reset)
 	}
@@ -48,7 +48,7 @@ func (p *Plain) Select(prompt string, options []string) (int, error) {
 	for {
 		label := fmt.Sprint(options[index])
 
-		p.Printf("\r%s%s%-*s", prompt, Input, length, label)
+		p.Printf("\r%s%s%-*s", prompt, p.theme.Input, length, label)
 
 		length = len(label)
 
