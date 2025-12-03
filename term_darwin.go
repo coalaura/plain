@@ -1,5 +1,5 @@
-//go:build linux
-// +build linux
+//go:build darwin || freebsd || netbsd || openbsd
+// +build darwin freebsd netbsd openbsd
 
 package plain
 
@@ -41,7 +41,7 @@ func openTTY() (*terminal, error) {
 
 	fd := int(f.Fd())
 
-	termios, err := unix.IoctlGetTermios(fd, unix.TCGETS)
+	termios, err := unix.IoctlGetTermios(fd, unix.TIOCGETA)
 	if err != nil {
 		f.Close()
 
@@ -54,7 +54,7 @@ func openTTY() (*terminal, error) {
 	termios.Cc[unix.VMIN] = 1
 	termios.Cc[unix.VTIME] = 0
 
-	if err := unix.IoctlSetTermios(fd, unix.TCSETS, termios); err != nil {
+	if err := unix.IoctlSetTermios(fd, unix.TIOCSETA, termios); err != nil {
 		f.Close()
 
 		return nil, err
@@ -63,7 +63,7 @@ func openTTY() (*terminal, error) {
 	return &terminal{
 		file: f,
 		restore: func() {
-			_ = unix.IoctlSetTermios(fd, unix.TCSETS, &oldState)
+			_ = unix.IoctlSetTermios(fd, unix.TIOCSETA, &oldState)
 		},
 	}, nil
 }

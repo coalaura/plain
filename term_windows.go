@@ -10,7 +10,7 @@ import (
 	"syscall"
 	"unsafe"
 
-	"github.com/containerd/console"
+	"golang.org/x/sys/windows"
 )
 
 type _consoleCursorInfo struct {
@@ -68,17 +68,59 @@ func openTTY() (*terminal, error) {
 		return nil, err
 	}
 
-	c := console.Current()
+	handle := windows.Handle(f.Fd())
 
-	err = c.SetRaw()
+	var mode uint32
+
+	err = windows.GetConsoleMode(handle, &mode)
 	if err != nil {
+		f.Close()
+
+		return nil, err
+	}
+
+	oldMode := mode
+
+	mode &^= windows.ENABLE_LINE_INPUT | windows.ENABLE_ECHO_INPUT
+
+	err = windows.SetConsoleMode(handle, mode)
+	if err != nil {
+		f.Close()
 		return nil, err
 	}
 
 	return &terminal{
-		Console: c,
-		File:    f,
+		file: f,
+		restore: func() {
+			windows.SetConsoleMode(handle, oldMode)
+		},
 	}, nil
+}
+
+func (t *terminal) ReadKey() (rune, error) {
+	t.HideCursor()
+
+	var buf [1]byte
+
+	for {
+		n, err := t.file.Read(buf[:])
+		if err != nil {
+			return 0, err
+		}
+
+		if n == 0 {
+			continue
+		}
+
+		b := buf[0]
+
+		switch {
+		case b == '\r' || b == '\n':
+			return '\n', nil
+		case (b >= 'a' && b <= 'z') || (b >= 'A' && b <= 'Z') || (b >= '0' && b <= '9'):
+			return rune(b), nil
+		}
+	}
 }
 
 func (t *terminal) ReadArrow() (int, error) {
@@ -86,7 +128,7 @@ func (t *terminal) ReadArrow() (int, error) {
 
 	var buf [256]byte
 
-	num, err := t.File.Read(buf[:])
+	num, err := t.file.Read(buf[:])
 	if err != nil {
 		return invalidInput, err
 	}
@@ -104,8 +146,8 @@ func (t *terminal) ReadArrow() (int, error) {
 		return arrowLeft, nil
 	}
 
+	// Double check common hex codes if basic string match fails (sometimes needed on Win)
 	hex := fmt.Sprintf("%x", buf[:num])
-
 	switch hex {
 	case "1b4f41":
 		return arrowUp, nil
@@ -115,18 +157,12 @@ func (t *terminal) ReadArrow() (int, error) {
 		return arrowRight, nil
 	case "1b4f44":
 		return arrowLeft, nil
-	case "1b0d":
+	case "1b0d", "0d":
 		return enter, nil
 	}
 
 	if num == 1 && buf[0] == 13 {
 		return enter, nil
-	}
-
-	if num == 1 && buf[0] == 3 {
-		t.Close()
-
-		os.Exit(0)
 	}
 
 	return invalidInput, nil

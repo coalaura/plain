@@ -26,7 +26,15 @@ func main() {
 	pl.Warnln("Hello from Warn")
 	pl.Errorln("Hello from Error")
 
-	input, _ := pl.Read(os.Stdin, "Input: ", 64)
+	confirmed, _ := pl.Confirm("Confirm", true)
+
+	if confirmed {
+		pl.Println("You confirmed")
+	} else {
+		pl.Println("You declined")
+	}
+
+	input, _ := pl.Read("Input: ", 64)
 
 	pl.Printf("You entered '%s'\n", input)
 

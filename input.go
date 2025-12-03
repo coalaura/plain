@@ -2,13 +2,16 @@ package plain
 
 import (
 	"fmt"
-	"io"
+	"os"
 	"strings"
 	"time"
 )
 
-// Read displays a prompt aligned with the logger's format.
-func (p *Plain) Read(in io.Reader, prompt string, max int) (string, error) {
+// Read displays a prompt aligned with the logger's format and reads max bytes from stdin.
+func (p *Plain) Read(prompt string, max int) (string, error) {
+	p.readLock.Lock()
+	defer p.readLock.Unlock()
+
 	bp := pool.Get().(*[]byte)
 
 	buf := *bp
@@ -21,15 +24,18 @@ func (p *Plain) Read(in io.Reader, prompt string, max int) (string, error) {
 	if p.color {
 		buf = append(buf, p.theme.Input...)
 
-		p.reset.Add(1)
-		defer p.reset.Add(^uint32(0))
+		p.closer.Store(func() {
+			p.out.Write([]byte(Reset))
+		})
+
+		defer p.closer.RunAndClear()
 	}
 
 	p.out.Write(buf)
 
 	res := make([]byte, max)
 
-	n, err := in.Read(res)
+	n, err := os.Stdin.Read(res)
 
 	if cap(buf) < 4096 {
 		*bp = buf
@@ -41,13 +47,94 @@ func (p *Plain) Read(in io.Reader, prompt string, max int) (string, error) {
 		return "", err
 	}
 
-	p.out.Write([]byte(Reset))
-
 	return strings.TrimSpace(string(res[:n])), nil
+}
+
+// ReadOne displays a prompt aligned with the logger's format and reads 1 byte from stdin.
+func (p *Plain) ReadOne(prompt string) (rune, error) {
+	p.readLock.Lock()
+	defer p.readLock.Unlock()
+
+	bp := pool.Get().(*[]byte)
+	defer pool.Put(bp)
+
+	buf := *bp
+	buf = buf[:0]
+
+	buf = p.appendPadding(buf)
+
+	buf = append(buf, prompt...)
+
+	p.out.Write(buf)
+
+	defer p.out.Write([]byte("\n"))
+
+	b, err := readKey(p)
+	if err != nil {
+		return 0, err
+	}
+
+	return rune(b), nil
+}
+
+// Confirm displays a prompt aligned with the logger's format and reads y/n confirmation from stdin.
+func (p *Plain) Confirm(prompt string, defaultYes bool) (bool, error) {
+	suffix := " [y/N]"
+
+	if defaultYes {
+		suffix = " [Y/n]"
+	}
+
+	p.readLock.Lock()
+	defer p.readLock.Unlock()
+
+	bp := pool.Get().(*[]byte)
+	defer pool.Put(bp)
+
+	buf := *bp
+	buf = buf[:0]
+
+	buf = p.appendPadding(buf)
+
+	buf = append(buf, prompt...)
+	buf = append(buf, suffix...)
+
+	p.out.Write(buf)
+
+	defer p.out.Write([]byte("\n"))
+
+	for {
+		b, err := readKey(p)
+		if err != nil {
+			return false, err
+		}
+
+		switch b {
+		case 'y', 'Y':
+			p.out.Write([]byte("y"))
+
+			return true, nil
+		case 'n', 'N':
+			p.out.Write([]byte("n"))
+
+			return false, nil
+		case '\r', '\n':
+			if defaultYes {
+				p.out.Write([]byte("y"))
+			} else {
+				p.out.Write([]byte("n"))
+			}
+
+			return defaultYes, nil
+		}
+	}
 }
 
 // Select displays a cyclic selector aligned with the logger's format.
 func (p *Plain) Select(prompt string, options []string) (int, error) {
+	p.readLock.Lock()
+	defer p.readLock.Unlock()
+
 	var (
 		index  int
 		length int
@@ -95,7 +182,7 @@ func (p *Plain) Select(prompt string, options []string) (int, error) {
 
 		p.out.Write(buf)
 
-		i, err := readArrow()
+		i, err := readArrow(p)
 		if err != nil {
 			return 0, err
 		}

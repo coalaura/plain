@@ -3,8 +3,6 @@ package plain
 import (
 	"io"
 	"os"
-
-	"github.com/containerd/console"
 )
 
 const (
@@ -22,8 +20,8 @@ const (
 )
 
 type terminal struct {
-	console.Console
-	*os.File
+	file    *os.File
+	restore func()
 }
 
 type fdGetter interface {
@@ -34,17 +32,34 @@ type closer interface {
 	Close() error
 }
 
-func readArrow() (int, error) {
+func readArrow(p *Plain) (int, error) {
 	t, err := openTTY()
 	if err != nil {
 		return 0, err
 	}
 
-	i, err := t.ReadArrow()
+	p.closer.Store(func() {
+		t.Close()
+	})
 
-	t.Close()
+	defer p.closer.RunAndClear()
 
-	return i, err
+	return t.ReadArrow()
+}
+
+func readKey(p *Plain) (rune, error) {
+	t, err := openTTY()
+	if err != nil {
+		return 0, err
+	}
+
+	p.closer.Store(func() {
+		t.Close()
+	})
+
+	defer p.closer.RunAndClear()
+
+	return t.ReadKey()
 }
 
 func getWriterFd(writer io.Writer) (int, bool) {
@@ -62,10 +77,9 @@ func getWriterFd(writer io.Writer) (int, bool) {
 func (t *terminal) Close() error {
 	t.ShowCursor()
 
-	err := t.Console.Reset()
-	if err != nil {
-		return err
+	if t.restore != nil {
+		t.restore()
 	}
 
-	return t.File.Close()
+	return t.file.Close()
 }

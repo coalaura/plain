@@ -5,7 +5,6 @@ import (
 	"io"
 	"os"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"golang.org/x/term"
@@ -28,8 +27,10 @@ type Theme struct {
 }
 
 type Plain struct {
-	out   io.Writer
-	reset atomic.Uint32
+	out io.Writer
+
+	readLock sync.Mutex
+	closer   *runner
 
 	color bool
 	mode  int
@@ -48,7 +49,8 @@ var pool = sync.Pool{
 
 func New(opts ...option) *Plain {
 	p := &Plain{
-		out: os.Stdout,
+		out:    os.Stdout,
+		closer: &runner{},
 	}
 
 	for _, opt := range opts {
@@ -104,9 +106,7 @@ func (p *Plain) Write(code, msg string, reset, nl bool) {
 }
 
 func (p *Plain) Close() error {
-	if p.reset.Load() != 0 {
-		p.out.Write([]byte(Reset))
-	}
+	p.closer.RunAndClear()
 
 	if cl, ok := p.out.(closer); ok {
 		err := cl.Close()
