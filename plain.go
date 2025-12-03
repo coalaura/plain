@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/signal"
 	"sync"
 	"time"
 
@@ -74,6 +75,23 @@ func New(opts ...option) *Plain {
 	}
 
 	return p
+}
+
+func (p *Plain) HandleInterrupt(fn ...func()) {
+	ch := make(chan os.Signal, 1)
+	signal.Notify(ch, os.Interrupt)
+
+	go func() {
+		<-ch
+
+		p.Close()
+
+		for _, f := range fn {
+			f()
+		}
+
+		os.Exit(1)
+	}()
 }
 
 func (p *Plain) Write(code, msg string, reset, nl bool) {
