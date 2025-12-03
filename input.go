@@ -111,20 +111,10 @@ func (p *Plain) Confirm(prompt string, defaultYes bool) (bool, error) {
 
 		switch b {
 		case 'y', 'Y':
-			p.out.Write([]byte("y"))
-
 			return true, nil
 		case 'n', 'N':
-			p.out.Write([]byte("n"))
-
 			return false, nil
 		case '\r', '\n':
-			if defaultYes {
-				p.out.Write([]byte("y"))
-			} else {
-				p.out.Write([]byte("n"))
-			}
-
 			return defaultYes, nil
 		}
 	}
