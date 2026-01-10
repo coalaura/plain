@@ -1,8 +1,6 @@
 package plain
 
-import (
-	"os"
-)
+import "os"
 
 // Debugf formats according to a format specifier and writes to the target output as a debug log.
 func (p *Plain) Debugf(format string, a ...any) {
@@ -64,8 +62,17 @@ func (p *Plain) Errorln(a ...any) {
 	p.Write(p.theme.Error, sprint(a...), true, true)
 }
 
-// MustFail logs the error and exits with code 1 if the error is not nil.
+// MustFail panics if err is not nil
 func (p *Plain) MustFail(err error) {
+	if err == nil {
+		return
+	}
+
+	panic(err)
+}
+
+// MustExit logs the error and exits with code 1 if the error is not nil.
+func (p *Plain) MustExit(err error) {
 	if err == nil {
 		return
 	}

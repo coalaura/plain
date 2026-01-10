@@ -1,6 +1,8 @@
 package main
 
 import (
+	"errors"
+
 	"github.com/coalaura/plain"
 )
 
@@ -32,4 +34,6 @@ func main() {
 	index, _ := pl.Select("Select: ", options)
 
 	pl.Printf("You selected '%s'\n", options[index])
+
+	pl.MustFail(errors.New("intentional panic"))
 }
