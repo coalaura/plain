@@ -7,6 +7,7 @@ type runner struct {
 	fn func()
 }
 
+// Store sets the function to be run by RunAndClear, replacing any previously stored function
 func (r *runner) Store(fn func()) {
 	r.mx.Lock()
 	defer r.mx.Unlock()
@@ -14,6 +15,7 @@ func (r *runner) Store(fn func()) {
 	r.fn = fn
 }
 
+// RunAndClear runs the stored function if present and then clears it
 func (r *runner) RunAndClear() {
 	r.mx.Lock()
 	defer r.mx.Unlock()

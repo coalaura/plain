@@ -1,16 +1,11 @@
 package main
 
 import (
-	"errors"
-
 	"github.com/coalaura/plain"
 )
 
 func main() {
 	pl := plain.New()
-
-	// optional, prevents leftover un-reset colors
-	pl.HandleInterrupt()
 
 	pl.Debugln("Hello from Debug")
 	pl.Println("Hello from Print")
@@ -35,5 +30,8 @@ func main() {
 
 	pl.Printf("You selected '%s'\n", options[index])
 
-	pl.MustFail(errors.New("intentional panic"))
+	// optional, prevents leftover un-reset colors
+	pl.WaitForInterrupt(true)
+
+	// cleanup code on exit...
 }

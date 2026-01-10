@@ -11,6 +11,7 @@ import (
 
 const padding = "      "
 
+// Middleware returns an http middleware that logs each request after it has been handled
 func (p *Plain) Middleware() func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
@@ -21,6 +22,7 @@ func (p *Plain) Middleware() func(http.Handler) http.Handler {
 	}
 }
 
+// LogRequest writes a single formatted access log line for request using the provided metrics
 func (p *Plain) LogRequest(request *http.Request, metrics *httpsnoop.Metrics) {
 	bp := pool.Get().(*[]byte)
 	defer pool.Put(bp)

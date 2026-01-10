@@ -11,28 +11,38 @@ go get -u github.com/coalaura/plain
 
 ```golang
 import (
-	"os"
 	"github.com/coalaura/plain"
 )
 
 func main() {
-	pl := plain.New(plain.WithDate(plain.RFC3339Local))
+	pl := plain.New()
 
 	pl.Debugln("Hello from Debug")
 	pl.Println("Hello from Print")
 	pl.Warnln("Hello from Warn")
 	pl.Errorln("Hello from Error")
 
-	input, err := pl.Read(os.Stdin, "Input: ", 64)
-	pl.MustFail(err)
+	confirmed, _ := pl.Confirm("Confirm", true)
+
+	if confirmed {
+		pl.Println("You confirmed")
+	} else {
+		pl.Println("You declined")
+	}
+
+	input, _ := pl.Read("Input: ", 64)
 
 	pl.Printf("You entered '%s'\n", input)
 
 	options := []string{"Red", "Green", "Blue", "Yellow"}
 
-	idx, err := pl.Select("Select: ", options)
-	pl.MustFail(err)
+	index, _ := pl.Select("Select: ", options)
 
-	pl.Printf("You selected '%s'\n", options[idx])
+	pl.Printf("You selected '%s'\n", options[index])
+
+	// optional, prevents leftover un-reset colors
+	pl.WaitForInterrupt(true)
+
+	// cleanup code on exit...
 }
 ```

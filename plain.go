@@ -1,22 +1,27 @@
 package plain
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"os"
 	"os/signal"
 	"sync"
+	"syscall"
 	"time"
 
 	"golang.org/x/term"
 )
 
 const (
+	// RFC3339Local is an RFC3339-like time format without timezone information
 	RFC3339Local = "2006-01-02T15:04:05"
 
+	// Reset resets ANSI styling to default
 	Reset = "\x1b[0m"
 )
 
+// Theme defines the ANSI color sequences used by the logger
 type Theme struct {
 	Success   string
 	Highlight string
@@ -27,6 +32,7 @@ type Theme struct {
 	Error  string
 }
 
+// Plain is a small, allocation-conscious logger with optional ANSI color output
 type Plain struct {
 	out io.Writer
 
@@ -48,6 +54,7 @@ var pool = sync.Pool{
 	},
 }
 
+// New creates a Plain logger configured by the provided options
 func New(opts ...option) *Plain {
 	p := &Plain{
 		out:    os.Stdout,
@@ -77,23 +84,21 @@ func New(opts ...option) *Plain {
 	return p
 }
 
-func (p *Plain) HandleInterrupt(fn ...func()) {
-	ch := make(chan os.Signal, 1)
-	signal.Notify(ch, os.Interrupt)
+// WaitForInterrupt blocks until SIGINT or SIGTERM is received and optionally closes the logger
+func (p *Plain) WaitForInterrupt(close bool) error {
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer cancel()
 
-	go func() {
-		<-ch
+	<-ctx.Done()
 
-		p.Close()
+	if close {
+		return p.Close()
+	}
 
-		for _, f := range fn {
-			f()
-		}
-
-		os.Exit(1)
-	}()
+	return nil
 }
 
+// Write writes a formatted log line with an optional reset code and newline
 func (p *Plain) Write(code, msg string, reset, nl bool) {
 	bp := pool.Get().(*[]byte)
 
@@ -123,6 +128,7 @@ func (p *Plain) Write(code, msg string, reset, nl bool) {
 	pool.Put(bp)
 }
 
+// Close runs any registered closers and closes the underlying writer when supported
 func (p *Plain) Close() error {
 	p.closer.RunAndClear()
 
