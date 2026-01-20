@@ -81,8 +81,7 @@ func (p *Plain) ReadOne(prompt string, print bool) (rune, error) {
 	return b, nil
 }
 
-// Confirm displays a prompt aligned with the logger's format and reads y/n confirmation from stdin.
-func (p *Plain) Confirm(prompt string, defaultYes, print bool) (bool, error) {
+func (p *Plain) confirm(prompt string, defaultYes, echo bool, prefix string) (bool, error) {
 	suffix := " [y/N]"
 
 	if defaultYes {
@@ -105,39 +104,56 @@ func (p *Plain) Confirm(prompt string, defaultYes, print bool) (bool, error) {
 
 	p.out.Write(buf)
 
-	defer p.out.Write([]byte("\n"))
+	var (
+		done   bool
+		result bool
+	)
 
-	for {
+	for !done {
 		b, err := readKey(p)
 		if err != nil {
+			p.out.Write([]byte("\n"))
+
 			return false, err
 		}
 
 		switch b {
 		case 'y', 'Y':
-			if print {
-				p.out.Write([]byte("y"))
-			}
-
-			return true, nil
+			done = true
+			result = true
 		case 'n', 'N':
-			if print {
-				p.out.Write([]byte("n"))
-			}
-
-			return false, nil
+			done = true
 		case '\r', '\n':
-			if print {
-				if defaultYes {
-					p.out.Write([]byte("y"))
-				} else {
-					p.out.Write([]byte("n"))
-				}
-			}
-
-			return defaultYes, nil
+			done = true
+			result = defaultYes
 		}
 	}
+
+	if echo {
+		if prefix != "" {
+			p.out.Write([]byte(prefix))
+		}
+
+		if result {
+			p.out.Write([]byte("y"))
+		} else {
+			p.out.Write([]byte("n"))
+		}
+	}
+
+	p.out.Write([]byte("\n"))
+
+	return result, nil
+}
+
+// Confirm displays a prompt aligned with the logger's format, reads y/n confirmation from stdin and prints a newline
+func (p *Plain) Confirm(prompt string, defaultYes bool) (bool, error) {
+	return p.confirm(prompt, defaultYes, false, "")
+}
+
+// ConfirmWithEcho displays a prompt aligned with the logger's format, reads y/n confirmation from stdin and echoes the chosen input (optionally prefixed) before printing a newline.
+func (p *Plain) ConfirmWithEcho(prompt string, defaultYes bool, prefix string) (bool, error) {
+	return p.confirm(prompt, defaultYes, true, prefix)
 }
 
 // Select displays a cyclic selector aligned with the logger's format.
