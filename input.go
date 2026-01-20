@@ -51,7 +51,7 @@ func (p *Plain) Read(prompt string, max int) (string, error) {
 }
 
 // ReadOne displays a prompt aligned with the logger's format and reads 1 byte from stdin.
-func (p *Plain) ReadOne(prompt string) (rune, error) {
+func (p *Plain) ReadOne(prompt string, print bool) (rune, error) {
 	p.readLock.Lock()
 	defer p.readLock.Unlock()
 
@@ -74,11 +74,15 @@ func (p *Plain) ReadOne(prompt string) (rune, error) {
 		return 0, err
 	}
 
-	return rune(b), nil
+	if print {
+		p.out.Write([]byte(string(b)))
+	}
+
+	return b, nil
 }
 
 // Confirm displays a prompt aligned with the logger's format and reads y/n confirmation from stdin.
-func (p *Plain) Confirm(prompt string, defaultYes bool) (bool, error) {
+func (p *Plain) Confirm(prompt string, defaultYes, print bool) (bool, error) {
 	suffix := " [y/N]"
 
 	if defaultYes {
@@ -111,10 +115,26 @@ func (p *Plain) Confirm(prompt string, defaultYes bool) (bool, error) {
 
 		switch b {
 		case 'y', 'Y':
+			if print {
+				p.out.Write([]byte("y"))
+			}
+
 			return true, nil
 		case 'n', 'N':
+			if print {
+				p.out.Write([]byte("n"))
+			}
+
 			return false, nil
 		case '\r', '\n':
+			if print {
+				if defaultYes {
+					p.out.Write([]byte("y"))
+				} else {
+					p.out.Write([]byte("n"))
+				}
+			}
+
 			return defaultYes, nil
 		}
 	}

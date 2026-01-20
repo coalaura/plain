@@ -12,7 +12,7 @@ func main() {
 	pl.Warnln("Hello from Warn")
 	pl.Errorln("Hello from Error")
 
-	confirmed, _ := pl.Confirm("Confirm", true)
+	confirmed, _ := pl.Confirm("Confirm", true, true)
 
 	if confirmed {
 		pl.Println("You confirmed")
