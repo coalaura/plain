@@ -51,7 +51,7 @@ func (p *Plain) Read(prompt string, max int) (string, error) {
 }
 
 // ReadOne displays a prompt aligned with the logger's format and reads 1 byte from stdin.
-func (p *Plain) ReadOne(prompt string, print bool) (rune, error) {
+func (p *Plain) ReadOne(prompt string, echo bool) (rune, error) {
 	p.readLock.Lock()
 	defer p.readLock.Unlock()
 
@@ -74,7 +74,7 @@ func (p *Plain) ReadOne(prompt string, print bool) (rune, error) {
 		return 0, err
 	}
 
-	if print {
+	if echo {
 		p.out.Write([]byte(string(b)))
 	}
 
