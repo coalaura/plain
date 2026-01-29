@@ -17,3 +17,16 @@ func WithDate(format string) option {
 		p.format = format
 	}
 }
+
+// SetTarget updates the output writer used by the logger
+func (p *Plain) SetTarget(out io.Writer) {
+	p.writeLock.Lock()
+	defer p.writeLock.Unlock()
+
+	p.out = out
+}
+
+// SetDate updates the timestamp format used in log headers (empty disables timestamps)
+func (p *Plain) SetDate(format string) {
+	p.format = format
+}

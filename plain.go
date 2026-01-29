@@ -36,8 +36,9 @@ type Theme struct {
 type Plain struct {
 	out io.Writer
 
-	readLock sync.Mutex
-	closer   *runner
+	writeLock sync.Mutex
+	readLock  sync.Mutex
+	closer    *runner
 
 	color bool
 	mode  int
@@ -117,7 +118,9 @@ func (p *Plain) Write(code, msg string, reset, nl bool) {
 		buf = append(buf, '\n')
 	}
 
+	p.writeLock.Lock()
 	p.out.Write(buf)
+	p.writeLock.Unlock()
 
 	if cap(buf) > 4096 {
 		return
