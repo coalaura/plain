@@ -26,6 +26,11 @@ func main() {
 
 	pl.Printf("You entered '%s'\n", input)
 
+	key, err := pl.ReadOne("Key: ", true)
+	pl.MustExit(err)
+
+	pl.Printf("You entered '%s'\n", string(key))
+
 	options := []string{"Red", "Green", "Blue", "Yellow"}
 
 	index, err := pl.Select("Select: ", options)

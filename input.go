@@ -25,6 +25,8 @@ func (p *Plain) Read(prompt string, max int) (string, error) {
 
 	if p.color {
 		buf = append(buf, p.theme.Input...)
+
+		defer p.out.Write([]byte(Reset))
 	}
 
 	p.out.Write(buf)
@@ -34,8 +36,6 @@ func (p *Plain) Read(prompt string, max int) (string, error) {
 	n, err := os.Stdin.Read(res)
 
 	if cap(buf) < 4096 {
-		*bp = buf
-
 		pool.Put(bp)
 	}
 
@@ -81,7 +81,19 @@ func (p *Plain) ReadOne(prompt string, echo bool) (rune, error) {
 	}
 
 	if echo {
-		p.out.Write([]byte(string(b)))
+		buf = buf[:0]
+
+		if p.color {
+			buf = append(buf, p.theme.Input...)
+		}
+
+		buf = append(buf, byte(b))
+
+		if p.color {
+			buf = append(buf, Reset...)
+		}
+
+		p.out.Write(buf)
 	}
 
 	return b, nil
@@ -146,15 +158,27 @@ func (p *Plain) confirm(prompt string, defaultYes, echo bool, prefix string) (bo
 	}
 
 	if echo {
+		buf = buf[:0]
+
 		if prefix != "" {
-			p.out.Write([]byte(prefix))
+			buf = append(buf, prefix...)
+		}
+
+		if p.color {
+			buf = append(buf, p.theme.Input...)
 		}
 
 		if result {
-			p.out.Write([]byte("y"))
+			buf = append(buf, byte('y'))
 		} else {
-			p.out.Write([]byte("n"))
+			buf = append(buf, byte('n'))
 		}
+
+		if p.color {
+			buf = append(buf, Reset...)
+		}
+
+		p.out.Write(buf)
 	}
 
 	p.out.Write([]byte("\n"))
