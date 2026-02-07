@@ -109,6 +109,10 @@ func (p *Plain) Theme(c themeColor) string {
 		return p.theme.Error
 	}
 
+	if !p.color {
+		return ""
+	}
+
 	return Reset
 }
 
