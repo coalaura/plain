@@ -201,7 +201,7 @@ func (p *Plain) stripANSI(buf []byte) []byte {
 				// OSC: ESC ] ... BEL (0x07) or ST (ESC \)
 				i += 2
 
-				for i < len(p) {
+				for i < len(buf) {
 					if buf[i] == '\x07' {
 						i++
 
