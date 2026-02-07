@@ -18,7 +18,16 @@ const (
 
 	// Reset resets ANSI styling to default
 	Reset = "\x1b[0m"
+
+	Dimmed themeColor = iota
+	Success
+	Highlight
+	Input
+	Warn
+	Error
 )
+
+type themeColor int
 
 // Theme defines the ANSI color sequences used by the logger
 type Theme struct {
@@ -81,6 +90,26 @@ func New(opts ...option) *Plain {
 	}
 
 	return p
+}
+
+// Theme returns a theme color as ansi code
+func (p *Plain) Theme(c themeColor) string {
+	switch c {
+	case Dimmed:
+		return p.theme.Dimmed
+	case Success:
+		return p.theme.Success
+	case Highlight:
+		return p.theme.Highlight
+	case Input:
+		return p.theme.Input
+	case Warn:
+		return p.theme.Warn
+	case Error:
+		return p.theme.Error
+	}
+
+	return Reset
 }
 
 // WaitForInterrupt blocks until SIGINT or SIGTERM is received
