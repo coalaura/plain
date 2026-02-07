@@ -118,6 +118,10 @@ func (p *Plain) Write(code, msg string, reset, nl bool) {
 		buf = append(buf, '\n')
 	}
 
+	if !p.color {
+		buf = p.stripANSI(buf)
+	}
+
 	p.writeLock.Lock()
 	p.out.Write(buf)
 	p.writeLock.Unlock()
@@ -171,6 +175,64 @@ func (p *Plain) appendHeader(dst []byte, code string) []byte {
 	dst = append(dst, ' ')
 
 	return dst
+}
+
+func (p *Plain) stripANSI(buf []byte) []byte {
+	var j int
+
+	for i := 0; i < len(buf); {
+		// ESC sequence?
+		if buf[i] == '\x1b' && i+1 < len(buf) {
+			switch buf[i+1] {
+			case '[':
+				// CSI: ESC [ ... final_byte (0x40-0x7E)
+				i += 2
+
+				for i < len(buf) && (buf[i] < 0x40 || buf[i] > 0x7E) {
+					i++
+				}
+
+				if i < len(buf) {
+					i++ // skip the final byte too
+				}
+
+				continue
+			case ']':
+				// OSC: ESC ] ... BEL (0x07) or ST (ESC \)
+				i += 2
+
+				for i < len(p) {
+					if buf[i] == '\x07' {
+						i++
+
+						break
+					}
+
+					if buf[i] == '\x1b' && i+1 < len(buf) && buf[i+1] == '\\' {
+						i += 2
+
+						break
+					}
+
+					i++
+				}
+
+				continue
+			default:
+				// Other 2-byte escapes (ESC ( etc.)
+				i += 2
+
+				continue
+			}
+		}
+
+		buf[j] = buf[i]
+
+		j++
+		i++
+	}
+
+	return buf[:j]
 }
 
 func sprint(a ...any) string {
