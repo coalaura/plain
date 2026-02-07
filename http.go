@@ -30,7 +30,7 @@ func (p *Plain) LogRequest(request *http.Request, metrics *httpsnoop.Metrics) {
 	buf := *bp
 	buf = buf[:0]
 
-	buf = p.appendHeader(buf, Reset)
+	buf = p.appendHeader(buf, ansiReset)
 
 	if p.color {
 		buf = append(buf, p.theme.Highlight...)
@@ -40,7 +40,7 @@ func (p *Plain) LogRequest(request *http.Request, metrics *httpsnoop.Metrics) {
 	buf = append(buf, method...)
 
 	if p.color {
-		buf = append(buf, Reset...)
+		buf = append(buf, ansiReset...)
 	}
 
 	l := len(method)
@@ -83,7 +83,7 @@ func (p *Plain) LogRequest(request *http.Request, metrics *httpsnoop.Metrics) {
 	}
 
 	if p.color {
-		buf = append(buf, Reset...)
+		buf = append(buf, ansiReset...)
 	}
 
 	buf = append(buf, ' ')
@@ -105,7 +105,7 @@ func (p *Plain) LogRequest(request *http.Request, metrics *httpsnoop.Metrics) {
 	buf = append(buf, addr...)
 
 	if p.color {
-		buf = append(buf, Reset...)
+		buf = append(buf, ansiReset...)
 	}
 
 	buf = append(buf, '\n')

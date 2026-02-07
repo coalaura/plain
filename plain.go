@@ -16,8 +16,7 @@ const (
 	// RFC3339Local is an RFC3339-like time format without timezone information
 	RFC3339Local = "2006-01-02T15:04:05"
 
-	// Reset resets ANSI styling to default
-	Reset = "\x1b[0m"
+	ansiReset = "\x1b[0m"
 
 	Dimmed themeColor = iota
 	Success
@@ -25,6 +24,7 @@ const (
 	Input
 	Warn
 	Error
+	Reset
 )
 
 type themeColor int
@@ -113,7 +113,7 @@ func (p *Plain) Theme(c themeColor) string {
 		return ""
 	}
 
-	return Reset
+	return ansiReset
 }
 
 // WaitForInterrupt blocks until SIGINT or SIGTERM is received
@@ -138,7 +138,7 @@ func (p *Plain) Write(code, msg string, reset, nl bool) {
 	buf = append(buf, msg...)
 
 	if p.color && reset {
-		buf = append(buf, Reset...)
+		buf = append(buf, ansiReset...)
 	}
 
 	if nl {
@@ -181,7 +181,7 @@ func (p *Plain) appendHeader(dst []byte, code string) []byte {
 		if code != "" {
 			dst = append(dst, code...)
 		} else {
-			dst = append(dst, Reset...)
+			dst = append(dst, ansiReset...)
 		}
 	}
 

@@ -19,17 +19,17 @@ func (p *Plain) Debugln(a ...any) {
 
 // Printf formats according to a format specifier and writes to the target output.
 func (p *Plain) Printf(format string, a ...any) {
-	p.Write(Reset, sprintf(format, a...), true, false)
+	p.Write(ansiReset, sprintf(format, a...), true, false)
 }
 
 // Print formats using the default formats for its operands and writes to the target output.
 func (p *Plain) Print(a ...any) {
-	p.Write(Reset, sprint(a...), true, false)
+	p.Write(ansiReset, sprint(a...), true, false)
 }
 
 // Println formats using the default formats for its operands and writes to the target output with a trailing newline.
 func (p *Plain) Println(a ...any) {
-	p.Write(Reset, sprint(a...), true, true)
+	p.Write(ansiReset, sprint(a...), true, true)
 }
 
 // Warnf formats according to a format specifier and writes to the target output as a warning.

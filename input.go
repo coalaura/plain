@@ -26,7 +26,7 @@ func (p *Plain) Read(prompt string, max int) (string, error) {
 	if p.color {
 		buf = append(buf, p.theme.Input...)
 
-		defer p.out.Write([]byte(Reset))
+		defer p.out.Write([]byte(ansiReset))
 	}
 
 	p.out.Write(buf)
@@ -90,7 +90,7 @@ func (p *Plain) ReadOne(prompt string, echo bool) (rune, error) {
 		buf = append(buf, byte(b))
 
 		if p.color {
-			buf = append(buf, Reset...)
+			buf = append(buf, ansiReset...)
 		}
 
 		p.out.Write(buf)
@@ -175,7 +175,7 @@ func (p *Plain) confirm(prompt string, defaultYes, echo bool, prefix string) (bo
 		}
 
 		if p.color {
-			buf = append(buf, Reset...)
+			buf = append(buf, ansiReset...)
 		}
 
 		p.out.Write(buf)
@@ -230,7 +230,7 @@ func (p *Plain) Select(prompt string, options []string) (int, error) {
 		buf = p.appendPadding(buf)
 
 		if p.color {
-			buf = append(buf, Reset...)
+			buf = append(buf, ansiReset...)
 		}
 
 		buf = append(buf, prompt...)
@@ -253,7 +253,7 @@ func (p *Plain) Select(prompt string, options []string) (int, error) {
 		length = len(label)
 
 		if p.color {
-			buf = append(buf, Reset...)
+			buf = append(buf, ansiReset...)
 		}
 
 		p.out.Write(buf)
