@@ -33,7 +33,8 @@ type Theme struct {
 
 // Plain is a small, allocation-conscious logger with optional ANSI color output
 type Plain struct {
-	out io.Writer
+	out  io.Writer
+	term *terminal
 
 	writeLock sync.Mutex
 	readLock  sync.Mutex

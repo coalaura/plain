@@ -12,7 +12,8 @@ func main() {
 	pl.Warnln("Hello from Warn")
 	pl.Errorln("Hello from Error")
 
-	confirmed, _ := pl.Confirm("Confirm", true)
+	confirmed, err := pl.ConfirmWithEcho("Confirm", true, " ")
+	pl.MustExit(err)
 
 	if confirmed {
 		pl.Println("You confirmed")
@@ -20,13 +21,15 @@ func main() {
 		pl.Println("You declined")
 	}
 
-	input, _ := pl.Read("Input: ", 64)
+	input, err := pl.Read("Input: ", 64)
+	pl.MustExit(err)
 
 	pl.Printf("You entered '%s'\n", input)
 
 	options := []string{"Red", "Green", "Blue", "Yellow"}
 
-	index, _ := pl.Select("Select: ", options)
+	index, err := pl.Select("Select: ", options)
+	pl.MustExit(err)
 
 	pl.Printf("You selected '%s'\n", options[index])
 }

@@ -1,8 +1,10 @@
 package plain
 
 import (
+	"context"
 	"fmt"
 	"os"
+	"os/signal"
 	"strings"
 	"time"
 )
@@ -63,7 +65,17 @@ func (p *Plain) ReadOne(prompt string, echo bool) (rune, error) {
 
 	defer p.out.Write([]byte("\n"))
 
-	b, err := readKey(p)
+	term, err := openTTY(false)
+	if err != nil {
+		return 0, err
+	}
+
+	defer term.Close()
+
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer stop()
+
+	b, err := readCtx(ctx, p, term, (*terminal).ReadKey)
 	if err != nil {
 		return 0, err
 	}
@@ -98,13 +110,23 @@ func (p *Plain) confirm(prompt string, defaultYes, echo bool, prefix string) (bo
 
 	p.out.Write(buf)
 
+	term, err := openTTY(false)
+	if err != nil {
+		return false, err
+	}
+
+	defer term.Close()
+
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer stop()
+
 	var (
 		done   bool
 		result bool
 	)
 
 	for !done {
-		b, err := readKey(p)
+		b, err := readCtx(ctx, p, term, (*terminal).ReadKey)
 		if err != nil {
 			p.out.Write([]byte("\n"))
 
@@ -163,6 +185,16 @@ func (p *Plain) Select(prompt string, options []string) (int, error) {
 	bp := pool.Get().(*[]byte)
 	defer pool.Put(bp)
 
+	term, err := openTTY(true)
+	if err != nil {
+		return 0, err
+	}
+
+	defer term.Close()
+
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer stop()
+
 	for {
 		buf := *bp
 		buf = buf[:0]
@@ -202,7 +234,7 @@ func (p *Plain) Select(prompt string, options []string) (int, error) {
 
 		p.out.Write(buf)
 
-		i, err := readArrow(p)
+		i, err := readCtx(ctx, p, term, (*terminal).ReadArrow)
 		if err != nil {
 			return 0, err
 		}

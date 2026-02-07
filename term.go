@@ -2,10 +2,8 @@ package plain
 
 import (
 	"context"
-	"errors"
 	"io"
 	"os"
-	"os/signal"
 	"sync/atomic"
 )
 
@@ -38,20 +36,8 @@ type result[T any] struct {
 	err error
 }
 
-var ErrInterrupted = errors.New("interrupted")
-
-func readWithInterrupt[T any](p *Plain, virtual bool, readFn func(*terminal) (T, error)) (T, error) {
+func readCtx[T any](ctx context.Context, p *Plain, t *terminal, readFn func(*terminal) (T, error)) (T, error) {
 	var zero T
-
-	t, err := openTTY(virtual)
-	if err != nil {
-		return zero, err
-	}
-
-	defer t.Close()
-
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
-	defer stop()
 
 	resCh := make(chan result[T], 1)
 
@@ -63,26 +49,10 @@ func readWithInterrupt[T any](p *Plain, virtual bool, readFn func(*terminal) (T,
 
 	select {
 	case <-ctx.Done():
-		if p.color {
-			p.out.Write([]byte(Reset))
-		}
-
 		return zero, ErrInterrupted
 	case res := <-resCh:
 		return res.val, res.err
 	}
-}
-
-func readArrow(p *Plain) (int, error) {
-	return readWithInterrupt(p, true, func(t *terminal) (int, error) {
-		return t.ReadArrow()
-	})
-}
-
-func readKey(p *Plain) (rune, error) {
-	return readWithInterrupt(p, false, func(t *terminal) (rune, error) {
-		return t.ReadKey()
-	})
 }
 
 func getWriterFd(writer io.Writer) (int, bool) {
