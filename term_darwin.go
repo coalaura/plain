@@ -33,7 +33,7 @@ func detectColorLevel(_ int) int {
 	return ModeSome
 }
 
-func openTTY() (*terminal, error) {
+func openTTY(_ bool) (*terminal, error) {
 	f, err := os.OpenFile("/dev/tty", os.O_RDWR, 0644)
 	if err != nil {
 		return nil, err
@@ -107,13 +107,13 @@ func (t *terminal) ReadArrow() (int, error) {
 	text := string(buf[:num])
 
 	switch text {
-	case "\x1b[A":
+	case "\x1b[A", "w":
 		return arrowUp, nil
-	case "\x1b[B":
+	case "\x1b[B", "s":
 		return arrowDown, nil
-	case "\x1b[C":
+	case "\x1b[C", "d":
 		return arrowRight, nil
-	case "\x1b[D":
+	case "\x1b[D", "a":
 		return arrowLeft, nil
 	case "\r", "\n":
 		return enter, nil

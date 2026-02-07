@@ -4,8 +4,11 @@ import (
 	"github.com/coalaura/plain"
 )
 
+var pl = plain.New()
+
 func main() {
-	pl := plain.New()
+	// optional, prevents leftover un-reset colors
+	go pl.WaitForInterrupt(true)
 
 	pl.Debugln("Hello from Debug")
 	pl.Println("Hello from Print")
@@ -29,9 +32,4 @@ func main() {
 	index, _ := pl.Select("Select: ", options)
 
 	pl.Printf("You selected '%s'\n", options[index])
-
-	// optional, prevents leftover un-reset colors
-	pl.WaitForInterrupt(true)
-
-	// cleanup code on exit...
 }

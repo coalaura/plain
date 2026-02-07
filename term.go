@@ -33,7 +33,7 @@ type closer interface {
 }
 
 func readArrow(p *Plain) (int, error) {
-	t, err := openTTY()
+	t, err := openTTY(true)
 	if err != nil {
 		return 0, err
 	}
@@ -48,7 +48,7 @@ func readArrow(p *Plain) (int, error) {
 }
 
 func readKey(p *Plain) (rune, error) {
-	t, err := openTTY()
+	t, err := openTTY(false)
 	if err != nil {
 		return 0, err
 	}

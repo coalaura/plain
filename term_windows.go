@@ -62,7 +62,7 @@ func detectColorLevel(fd int) int {
 	return ModeSome
 }
 
-func openTTY() (*terminal, error) {
+func openTTY(virtual bool) (*terminal, error) {
 	f, err := os.OpenFile("CONIN$", os.O_RDWR, 0644)
 	if err != nil {
 		return nil, err
@@ -82,6 +82,10 @@ func openTTY() (*terminal, error) {
 	oldMode := mode
 
 	mode &^= windows.ENABLE_LINE_INPUT | windows.ENABLE_ECHO_INPUT
+
+	if virtual {
+		mode |= windows.ENABLE_VIRTUAL_TERMINAL_INPUT
+	}
 
 	err = windows.SetConsoleMode(handle, mode)
 	if err != nil {
@@ -136,13 +140,13 @@ func (t *terminal) ReadArrow() (int, error) {
 	text := string(buf[:num])
 
 	switch text {
-	case "\x1b[A":
+	case "\x1b[A", "w":
 		return arrowUp, nil
-	case "\x1b[B":
+	case "\x1b[B", "s":
 		return arrowDown, nil
-	case "\x1b[C":
+	case "\x1b[C", "d":
 		return arrowRight, nil
-	case "\x1b[D":
+	case "\x1b[D", "a":
 		return arrowLeft, nil
 	}
 
