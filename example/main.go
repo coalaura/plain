@@ -7,9 +7,6 @@ import (
 var pl = plain.New()
 
 func main() {
-	// optional, prevents leftover un-reset colors
-	go pl.WaitForInterrupt(true)
-
 	pl.Debugln("Hello from Debug")
 	pl.Println("Hello from Print")
 	pl.Warnln("Hello from Warn")

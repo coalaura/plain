@@ -51,6 +51,8 @@ func openTTY(_ bool) (*terminal, error) {
 	oldState := *termios
 
 	termios.Lflag &^= unix.ICANON | unix.ECHO
+	termios.Lflag |= unix.ISIG
+
 	termios.Cc[unix.VMIN] = 1
 	termios.Cc[unix.VTIME] = 0
 

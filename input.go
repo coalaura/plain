@@ -23,12 +23,6 @@ func (p *Plain) Read(prompt string, max int) (string, error) {
 
 	if p.color {
 		buf = append(buf, p.theme.Input...)
-
-		p.closer.Store(func() {
-			p.out.Write([]byte(Reset))
-		})
-
-		defer p.closer.RunAndClear()
 	}
 
 	p.out.Write(buf)

@@ -7,7 +7,6 @@ import (
 	"os"
 	"os/signal"
 	"sync"
-	"syscall"
 	"time"
 
 	"golang.org/x/term"
@@ -38,7 +37,6 @@ type Plain struct {
 
 	writeLock sync.Mutex
 	readLock  sync.Mutex
-	closer    *runner
 
 	color bool
 	mode  int
@@ -58,8 +56,7 @@ var pool = sync.Pool{
 // New creates a Plain logger configured by the provided options
 func New(opts ...option) *Plain {
 	p := &Plain{
-		out:    os.Stdout,
-		closer: &runner{},
+		out: os.Stdout,
 	}
 
 	for _, opt := range opts {
@@ -85,16 +82,12 @@ func New(opts ...option) *Plain {
 	return p
 }
 
-// WaitForInterrupt blocks until SIGINT or SIGTERM is received and optionally closes the logger
-func (p *Plain) WaitForInterrupt(close bool) error {
-	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+// WaitForInterrupt blocks until SIGINT or SIGTERM is received
+func (p *Plain) WaitForInterrupt() error {
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer cancel()
 
 	<-ctx.Done()
-
-	if close {
-		return p.Close()
-	}
 
 	return nil
 }
@@ -133,20 +126,6 @@ func (p *Plain) Write(code, msg string, reset, nl bool) {
 	*bp = buf
 
 	pool.Put(bp)
-}
-
-// Close runs any registered closers and closes the underlying writer when supported
-func (p *Plain) Close() error {
-	p.closer.RunAndClear()
-
-	if cl, ok := p.out.(closer); ok {
-		err := cl.Close()
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
 }
 
 func (p *Plain) appendHeader(dst []byte, code string) []byte {

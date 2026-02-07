@@ -85,6 +85,7 @@ func openTTY(virtual bool) (*terminal, error) {
 
 	if virtual {
 		mode |= windows.ENABLE_VIRTUAL_TERMINAL_INPUT
+		mode |= windows.ENABLE_PROCESSED_INPUT
 	}
 
 	err = windows.SetConsoleMode(handle, mode)
