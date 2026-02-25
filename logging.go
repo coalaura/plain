@@ -4,62 +4,62 @@ import "os"
 
 // Debugf formats according to a format specifier and writes to the target output as a debug log.
 func (p *Plain) Debugf(format string, a ...any) {
-	p.Write(p.theme.Dimmed, sprintf(format, a...), true, false)
+	p.writeFormat(p.theme.Dimmed, true, false, format, a...)
 }
 
 // Debug formats using the default formats for its operands and writes to the target output as a debug log.
 func (p *Plain) Debug(a ...any) {
-	p.Write(p.theme.Dimmed, sprint(a...), true, false)
+	p.writeArgs(p.theme.Dimmed, true, false, a...)
 }
 
 // Debugln formats using the default formats for its operands and writes to the target output as a debug log with a trailing newline.
 func (p *Plain) Debugln(a ...any) {
-	p.Write(p.theme.Dimmed, sprint(a...), true, true)
+	p.writeArgs(p.theme.Dimmed, true, true, a...)
 }
 
 // Printf formats according to a format specifier and writes to the target output.
 func (p *Plain) Printf(format string, a ...any) {
-	p.Write(ansiReset, sprintf(format, a...), true, false)
+	p.writeFormat(ansiReset, true, false, format, a...)
 }
 
 // Print formats using the default formats for its operands and writes to the target output.
 func (p *Plain) Print(a ...any) {
-	p.Write(ansiReset, sprint(a...), true, false)
+	p.writeArgs(ansiReset, true, false, a...)
 }
 
 // Println formats using the default formats for its operands and writes to the target output with a trailing newline.
 func (p *Plain) Println(a ...any) {
-	p.Write(ansiReset, sprint(a...), true, true)
+	p.writeArgs(ansiReset, true, true, a...)
 }
 
 // Warnf formats according to a format specifier and writes to the target output as a warning.
 func (p *Plain) Warnf(format string, a ...any) {
-	p.Write(p.theme.Warn, sprintf(format, a...), true, false)
+	p.writeFormat(p.theme.Warn, true, false, format, a...)
 }
 
 // Warn formats using the default formats for its operands and writes to the target output as a warning.
 func (p *Plain) Warn(a ...any) {
-	p.Write(p.theme.Warn, sprint(a...), true, false)
+	p.writeArgs(p.theme.Warn, true, false, a...)
 }
 
 // Warnln formats using the default formats for its operands and writes to the target output as a warning with a trailing newline.
 func (p *Plain) Warnln(a ...any) {
-	p.Write(p.theme.Warn, sprint(a...), true, true)
+	p.writeArgs(p.theme.Warn, true, true, a...)
 }
 
 // Errorf formats according to a format specifier and writes to the target output as an error.
 func (p *Plain) Errorf(format string, a ...any) {
-	p.Write(p.theme.Error, sprintf(format, a...), true, false)
+	p.writeFormat(p.theme.Error, true, false, format, a...)
 }
 
 // Error formats using the default formats for its operands and writes to the target output as an error.
 func (p *Plain) Error(a ...any) {
-	p.Write(p.theme.Error, sprint(a...), true, false)
+	p.writeArgs(p.theme.Error, true, false, a...)
 }
 
 // Errorln formats using the default formats for its operands and writes to the target output as an error with a trailing newline.
 func (p *Plain) Errorln(a ...any) {
-	p.Write(p.theme.Error, sprint(a...), true, true)
+	p.writeArgs(p.theme.Error, true, true, a...)
 }
 
 // MustFail panics if err is not nil

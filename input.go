@@ -3,6 +3,7 @@ package plain
 import (
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"os/signal"
 	"strings"
@@ -19,6 +20,14 @@ func (p *Plain) Read(prompt string, max int) (string, error) {
 	buf := *bp
 	buf = buf[:0]
 
+	defer func() {
+		if cap(buf) <= 4096 {
+			*bp = buf
+
+			pool.Put(bp)
+		}
+	}()
+
 	buf = p.appendPadding(buf)
 
 	buf = append(buf, prompt...)
@@ -26,7 +35,7 @@ func (p *Plain) Read(prompt string, max int) (string, error) {
 	if p.color {
 		buf = append(buf, p.theme.Input...)
 
-		defer p.out.Write([]byte(ansiReset))
+		defer io.WriteString(p.out, ansiReset)
 	}
 
 	p.out.Write(buf)
@@ -34,11 +43,6 @@ func (p *Plain) Read(prompt string, max int) (string, error) {
 	res := make([]byte, max)
 
 	n, err := os.Stdin.Read(res)
-
-	if cap(buf) < 4096 {
-		pool.Put(bp)
-	}
-
 	if err != nil {
 		return "", err
 	}
@@ -52,10 +56,15 @@ func (p *Plain) ReadOne(prompt string, echo bool) (rune, error) {
 	defer p.readLock.Unlock()
 
 	bp := pool.Get().(*[]byte)
-	defer pool.Put(bp)
 
 	buf := *bp
 	buf = buf[:0]
+
+	defer func() {
+		*bp = buf
+
+		pool.Put(bp)
+	}()
 
 	buf = p.appendPadding(buf)
 
@@ -63,7 +72,7 @@ func (p *Plain) ReadOne(prompt string, echo bool) (rune, error) {
 
 	p.out.Write(buf)
 
-	defer p.out.Write([]byte("\n"))
+	defer io.WriteString(p.out, "\n")
 
 	term, err := openTTY(false)
 	if err != nil {
@@ -110,10 +119,15 @@ func (p *Plain) confirm(prompt string, defaultYes, echo bool, prefix string) (bo
 	defer p.readLock.Unlock()
 
 	bp := pool.Get().(*[]byte)
-	defer pool.Put(bp)
 
 	buf := *bp
 	buf = buf[:0]
+
+	defer func() {
+		*bp = buf
+
+		pool.Put(bp)
+	}()
 
 	buf = p.appendPadding(buf)
 
@@ -140,7 +154,7 @@ func (p *Plain) confirm(prompt string, defaultYes, echo bool, prefix string) (bo
 	for !done {
 		b, err := readCtx(ctx, p, term, (*terminal).ReadKey)
 		if err != nil {
-			p.out.Write([]byte("\n"))
+			io.WriteString(p.out, "\n")
 
 			return false, err
 		}
@@ -181,7 +195,7 @@ func (p *Plain) confirm(prompt string, defaultYes, echo bool, prefix string) (bo
 		p.out.Write(buf)
 	}
 
-	p.out.Write([]byte("\n"))
+	io.WriteString(p.out, "\n")
 
 	return result, nil
 }
@@ -207,7 +221,14 @@ func (p *Plain) Select(prompt string, options []string) (int, error) {
 	)
 
 	bp := pool.Get().(*[]byte)
-	defer pool.Put(bp)
+
+	buf := *bp
+
+	defer func() {
+		*bp = buf
+
+		pool.Put(bp)
+	}()
 
 	term, err := openTTY(true)
 	if err != nil {
@@ -220,7 +241,6 @@ func (p *Plain) Select(prompt string, options []string) (int, error) {
 	defer stop()
 
 	for {
-		buf := *bp
 		buf = buf[:0]
 
 		label := options[index]

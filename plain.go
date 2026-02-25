@@ -162,6 +162,82 @@ func (p *Plain) Write(code, msg string, reset, nl bool) {
 	pool.Put(bp)
 }
 
+func (p *Plain) writeArgs(code string, reset, nl bool, a ...any) {
+	bp := pool.Get().(*[]byte)
+
+	buf := *bp
+	buf = buf[:0]
+
+	buf = p.appendHeader(buf, code)
+
+	if len(a) > 0 {
+		buf = fmt.Append(buf, a...)
+	}
+
+	if p.color && reset {
+		buf = append(buf, ansiReset...)
+	}
+
+	if nl {
+		buf = append(buf, '\n')
+	}
+
+	if !p.color {
+		buf = p.stripANSI(buf)
+	}
+
+	p.writeLock.Lock()
+	p.out.Write(buf)
+	p.writeLock.Unlock()
+
+	if cap(buf) > 4096 {
+		return
+	}
+
+	*bp = buf
+
+	pool.Put(bp)
+}
+
+func (p *Plain) writeFormat(code string, reset, nl bool, format string, a ...any) {
+	bp := pool.Get().(*[]byte)
+
+	buf := *bp
+	buf = buf[:0]
+
+	buf = p.appendHeader(buf, code)
+
+	if len(a) == 0 {
+		buf = append(buf, format...)
+	} else {
+		buf = fmt.Appendf(buf, format, a...)
+	}
+
+	if p.color && reset {
+		buf = append(buf, ansiReset...)
+	}
+
+	if nl {
+		buf = append(buf, '\n')
+	}
+
+	if !p.color {
+		buf = p.stripANSI(buf)
+	}
+
+	p.writeLock.Lock()
+	p.out.Write(buf)
+	p.writeLock.Unlock()
+
+	if cap(buf) > 4096 {
+		return
+	}
+
+	*bp = buf
+
+	pool.Put(bp)
+}
+
 func (p *Plain) appendHeader(dst []byte, code string) []byte {
 	if p.format == "" {
 		if p.color {
@@ -246,22 +322,6 @@ func (p *Plain) stripANSI(buf []byte) []byte {
 	}
 
 	return buf[:j]
-}
-
-func sprint(a ...any) string {
-	if len(a) == 0 {
-		return ""
-	}
-
-	return fmt.Sprint(a...)
-}
-
-func sprintf(format string, a ...any) string {
-	if len(a) == 0 {
-		return format
-	}
-
-	return fmt.Sprintf(format, a...)
 }
 
 func color(mode int, some, bit8, full string) string {

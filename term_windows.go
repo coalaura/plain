@@ -4,7 +4,6 @@
 package plain
 
 import (
-	"fmt"
 	"os"
 	"strings"
 	"syscall"
@@ -138,35 +137,49 @@ func (t *terminal) ReadArrow() (int, error) {
 		return invalidInput, err
 	}
 
-	text := string(buf[:num])
-
-	switch text {
-	case "\x1b[A", "w":
-		return arrowUp, nil
-	case "\x1b[B", "s":
-		return arrowDown, nil
-	case "\x1b[C", "d":
-		return arrowRight, nil
-	case "\x1b[D", "a":
-		return arrowLeft, nil
+	if num == 1 {
+		switch buf[0] {
+		case 'w':
+			return arrowUp, nil
+		case 's':
+			return arrowDown, nil
+		case 'd':
+			return arrowRight, nil
+		case 'a':
+			return arrowLeft, nil
+		case '\r', '\n':
+			return enter, nil
+		}
 	}
 
-	// Double check common hex codes if basic string match fails (sometimes needed on Win)
-	hex := fmt.Sprintf("%x", buf[:num])
-	switch hex {
-	case "1b4f41":
-		return arrowUp, nil
-	case "1b4f42":
-		return arrowDown, nil
-	case "1b4f43":
-		return arrowRight, nil
-	case "1b4f44":
-		return arrowLeft, nil
-	case "1b0d", "0d":
-		return enter, nil
+	if num >= 3 && buf[0] == '\x1b' {
+		switch buf[1] {
+		case '[':
+			switch buf[2] {
+			case 'A':
+				return arrowUp, nil
+			case 'B':
+				return arrowDown, nil
+			case 'C':
+				return arrowRight, nil
+			case 'D':
+				return arrowLeft, nil
+			}
+		case 'O':
+			switch buf[2] {
+			case 'A':
+				return arrowUp, nil
+			case 'B':
+				return arrowDown, nil
+			case 'C':
+				return arrowRight, nil
+			case 'D':
+				return arrowLeft, nil
+			}
+		}
 	}
 
-	if num == 1 && buf[0] == 13 {
+	if num == 2 && buf[0] == '\x1b' && buf[1] == '\r' {
 		return enter, nil
 	}
 

@@ -25,7 +25,6 @@ func (p *Plain) Middleware() func(http.Handler) http.Handler {
 // LogRequest writes a single formatted access log line for request using the provided metrics
 func (p *Plain) LogRequest(request *http.Request, metrics *httpsnoop.Metrics) {
 	bp := pool.Get().(*[]byte)
-	defer pool.Put(bp)
 
 	buf := *bp
 	buf = buf[:0]
@@ -112,13 +111,10 @@ func (p *Plain) LogRequest(request *http.Request, metrics *httpsnoop.Metrics) {
 
 	p.out.Write(buf)
 
-	if cap(buf) > 4096 {
-		return
+	if cap(buf) <= 4096 {
+		*bp = buf
+		pool.Put(bp)
 	}
-
-	*bp = buf
-
-	pool.Put(bp)
 }
 
 func appendDuration(dst []byte, dur time.Duration) []byte {

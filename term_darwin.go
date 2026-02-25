@@ -4,7 +4,6 @@
 package plain
 
 import (
-	"fmt"
 	"os"
 	"strings"
 
@@ -106,28 +105,41 @@ func (t *terminal) ReadArrow() (int, error) {
 		return invalidInput, err
 	}
 
-	text := string(buf[:num])
+	if num == 1 {
+		switch buf[0] {
+		case 'w':
+			return arrowUp, nil
+		case 's':
+			return arrowDown, nil
+		case 'd':
+			return arrowRight, nil
+		case 'a':
+			return arrowLeft, nil
+		case '\r', '\n':
+			return enter, nil
+		}
+	}
 
-	switch text {
-	case "\x1b[A", "w":
-		return arrowUp, nil
-	case "\x1b[B", "s":
-		return arrowDown, nil
-	case "\x1b[C", "d":
-		return arrowRight, nil
-	case "\x1b[D", "a":
-		return arrowLeft, nil
-	case "\r", "\n":
-		return enter, nil
+	if num >= 3 && buf[0] == '\x1b' && buf[1] == '[' {
+		switch buf[2] {
+		case 'A':
+			return arrowUp, nil
+		case 'B':
+			return arrowDown, nil
+		case 'C':
+			return arrowRight, nil
+		case 'D':
+			return arrowLeft, nil
+		}
 	}
 
 	return invalidInput, nil
 }
 
 func (t *terminal) HideCursor() {
-	fmt.Fprint(os.Stdout, "\x1b[?25l")
+	os.Stdout.WriteString("\x1b[?25l")
 }
 
 func (t *terminal) ShowCursor() {
-	fmt.Fprint(os.Stdout, "\x1b[?25h")
+	os.Stdout.WriteString("\x1b[?25h")
 }
