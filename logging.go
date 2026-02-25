@@ -14,7 +14,7 @@ func (p *Plain) Debug(a ...any) {
 
 // Debugln formats using the default formats for its operands and writes to the target output as a debug log with a trailing newline.
 func (p *Plain) Debugln(a ...any) {
-	p.writeArgs(p.theme.Dimmed, true, true, a...)
+	p.writeArgsLine(p.theme.Dimmed, true, a...)
 }
 
 // Printf formats according to a format specifier and writes to the target output.
@@ -29,7 +29,7 @@ func (p *Plain) Print(a ...any) {
 
 // Println formats using the default formats for its operands and writes to the target output with a trailing newline.
 func (p *Plain) Println(a ...any) {
-	p.writeArgs(ansiReset, true, true, a...)
+	p.writeArgsLine(ansiReset, true, a...)
 }
 
 // Warnf formats according to a format specifier and writes to the target output as a warning.
@@ -44,7 +44,7 @@ func (p *Plain) Warn(a ...any) {
 
 // Warnln formats using the default formats for its operands and writes to the target output as a warning with a trailing newline.
 func (p *Plain) Warnln(a ...any) {
-	p.writeArgs(p.theme.Warn, true, true, a...)
+	p.writeArgsLine(p.theme.Warn, true, a...)
 }
 
 // Errorf formats according to a format specifier and writes to the target output as an error.
@@ -59,7 +59,7 @@ func (p *Plain) Error(a ...any) {
 
 // Errorln formats using the default formats for its operands and writes to the target output as an error with a trailing newline.
 func (p *Plain) Errorln(a ...any) {
-	p.writeArgs(p.theme.Error, true, true, a...)
+	p.writeArgsLine(p.theme.Error, true, a...)
 }
 
 // MustFail panics if err is not nil

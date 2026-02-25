@@ -1,11 +1,13 @@
 package plain
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
 	"os"
 	"os/signal"
+	"strings"
 	"sync"
 	"time"
 
@@ -51,9 +53,10 @@ type Plain struct {
 	color bool
 	mode  int
 
-	theme Theme
-
+	theme  Theme
 	format string
+
+	readBuf []byte
 }
 
 var pool = sync.Pool{
@@ -128,6 +131,26 @@ func (p *Plain) WaitForInterrupt() error {
 
 // Write writes a formatted log line with an optional reset code and newline
 func (p *Plain) Write(code, msg string, reset, nl bool) {
+	if nl {
+		p.writeLine(code, msg, reset)
+
+		return
+	}
+
+	p.writeString(code, msg, reset)
+}
+
+func (p *Plain) writeString(code, msg string, reset bool) {
+	if !p.color && p.format == "" && strings.IndexByte(msg, '\x1b') == -1 {
+		if sw, ok := p.out.(io.StringWriter); ok {
+			p.writeLock.Lock()
+			sw.WriteString(msg)
+			p.writeLock.Unlock()
+
+			return
+		}
+	}
+
 	bp := pool.Get().(*[]byte)
 
 	buf := *bp
@@ -141,11 +164,49 @@ func (p *Plain) Write(code, msg string, reset, nl bool) {
 		buf = append(buf, ansiReset...)
 	}
 
-	if nl {
-		buf = append(buf, '\n')
+	if !p.color && bytes.IndexByte(buf, '\x1b') >= 0 {
+		buf = p.stripANSI(buf)
 	}
 
-	if !p.color {
+	p.writeLock.Lock()
+	p.out.Write(buf)
+	p.writeLock.Unlock()
+
+	if cap(buf) < 4096 {
+		*bp = buf
+
+		pool.Put(bp)
+	}
+}
+
+func (p *Plain) writeLine(code, msg string, reset bool) {
+	if !p.color && p.format == "" && strings.IndexByte(msg, '\x1b') == -1 {
+		if sw, ok := p.out.(io.StringWriter); ok {
+			p.writeLock.Lock()
+			sw.WriteString(msg)
+			sw.WriteString("\n")
+			p.writeLock.Unlock()
+
+			return
+		}
+	}
+
+	bp := pool.Get().(*[]byte)
+
+	buf := *bp
+	buf = buf[:0]
+
+	buf = p.appendHeader(buf, code)
+
+	buf = append(buf, msg...)
+
+	if p.color && reset {
+		buf = append(buf, ansiReset...)
+	}
+
+	buf = append(buf, '\n')
+
+	if !p.color && bytes.IndexByte(buf, '\x1b') >= 0 {
 		buf = p.stripANSI(buf)
 	}
 
@@ -163,6 +224,12 @@ func (p *Plain) Write(code, msg string, reset, nl bool) {
 }
 
 func (p *Plain) writeArgs(code string, reset, nl bool, a ...any) {
+	if nl {
+		p.writeArgsLine(code, reset, a...)
+
+		return
+	}
+
 	bp := pool.Get().(*[]byte)
 
 	buf := *bp
@@ -178,11 +245,40 @@ func (p *Plain) writeArgs(code string, reset, nl bool, a ...any) {
 		buf = append(buf, ansiReset...)
 	}
 
-	if nl {
-		buf = append(buf, '\n')
+	if !p.color && bytes.IndexByte(buf, '\x1b') >= 0 {
+		buf = p.stripANSI(buf)
 	}
 
-	if !p.color {
+	p.writeLock.Lock()
+	p.out.Write(buf)
+	p.writeLock.Unlock()
+
+	if cap(buf) < 4096 {
+		*bp = buf
+
+		pool.Put(bp)
+	}
+}
+
+func (p *Plain) writeArgsLine(code string, reset bool, a ...any) {
+	bp := pool.Get().(*[]byte)
+
+	buf := *bp
+	buf = buf[:0]
+
+	buf = p.appendHeader(buf, code)
+
+	if len(a) > 0 {
+		buf = fmt.Append(buf, a...)
+	}
+
+	if p.color && reset {
+		buf = append(buf, ansiReset...)
+	}
+
+	buf = append(buf, '\n')
+
+	if !p.color && bytes.IndexByte(buf, '\x1b') >= 0 {
 		buf = p.stripANSI(buf)
 	}
 
@@ -200,6 +296,12 @@ func (p *Plain) writeArgs(code string, reset, nl bool, a ...any) {
 }
 
 func (p *Plain) writeFormat(code string, reset, nl bool, format string, a ...any) {
+	if nl {
+		p.writeFormatLine(code, reset, format, a...)
+
+		return
+	}
+
 	bp := pool.Get().(*[]byte)
 
 	buf := *bp
@@ -217,11 +319,42 @@ func (p *Plain) writeFormat(code string, reset, nl bool, format string, a ...any
 		buf = append(buf, ansiReset...)
 	}
 
-	if nl {
-		buf = append(buf, '\n')
+	if !p.color && bytes.IndexByte(buf, '\x1b') >= 0 {
+		buf = p.stripANSI(buf)
 	}
 
-	if !p.color {
+	p.writeLock.Lock()
+	p.out.Write(buf)
+	p.writeLock.Unlock()
+
+	if cap(buf) < 4096 {
+		*bp = buf
+
+		pool.Put(bp)
+	}
+}
+
+func (p *Plain) writeFormatLine(code string, reset bool, format string, a ...any) {
+	bp := pool.Get().(*[]byte)
+
+	buf := *bp
+	buf = buf[:0]
+
+	buf = p.appendHeader(buf, code)
+
+	if len(a) == 0 {
+		buf = append(buf, format...)
+	} else {
+		buf = fmt.Appendf(buf, format, a...)
+	}
+
+	if p.color && reset {
+		buf = append(buf, ansiReset...)
+	}
+
+	buf = append(buf, '\n')
+
+	if !p.color && bytes.IndexByte(buf, '\x1b') >= 0 {
 		buf = p.stripANSI(buf)
 	}
 

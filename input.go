@@ -6,7 +6,6 @@ import (
 	"io"
 	"os"
 	"os/signal"
-	"strings"
 	"time"
 )
 
@@ -40,14 +39,32 @@ func (p *Plain) Read(prompt string, max int) (string, error) {
 
 	p.out.Write(buf)
 
-	res := make([]byte, max)
+	res := p.readBuf
+	if cap(res) < max {
+		res = make([]byte, max)
+
+		p.readBuf = res
+	}
+
+	res = res[:max]
 
 	n, err := os.Stdin.Read(res)
 	if err != nil {
 		return "", err
 	}
 
-	return strings.TrimSpace(string(res[:n])), nil
+	end := n
+
+	for end > 0 {
+		b := res[end-1]
+		if b != '\n' && b != '\r' {
+			break
+		}
+
+		end--
+	}
+
+	return string(res[:end]), nil
 }
 
 // ReadOne displays a prompt aligned with the logger's format and reads 1 byte from stdin.

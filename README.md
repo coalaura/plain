@@ -46,3 +46,11 @@ func main() {
 	// cleanup code on exit...
 }
 ```
+
+### Performance tips
+
+- Prefer `Println`/`Printf` for hot paths to avoid extra formatting work.
+- Keep `WithDate("")` (default) when you do not need timestamps.
+- Avoid embedding ANSI sequences in messages if color is disabled.
+- Reuse a single `Plain` instance instead of creating per call.
+- For high-throughput logging, direct output to buffered IO (e.g. `bufio.Writer`).
