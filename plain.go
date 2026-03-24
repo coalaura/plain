@@ -161,7 +161,9 @@ func (p *Plain) writeString(code, msg string, reset, noHeader bool) {
 	buf := *bp
 	buf = buf[:0]
 
-	if !noHeader {
+	if noHeader {
+		buf = append(buf, code...)
+	} else {
 		buf = p.appendHeader(buf, code)
 	}
 
@@ -203,7 +205,9 @@ func (p *Plain) writeLine(code, msg string, reset, noHeader bool) {
 	buf := *bp
 	buf = buf[:0]
 
-	if !noHeader {
+	if noHeader {
+		buf = append(buf, code...)
+	} else {
 		buf = p.appendHeader(buf, code)
 	}
 
