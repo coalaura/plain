@@ -129,18 +129,23 @@ func (p *Plain) WaitForInterrupt() error {
 	return nil
 }
 
-// Write writes a formatted log line with an optional reset code and newline
-func (p *Plain) Write(code, msg string, reset, nl bool) {
-	if nl {
-		p.writeLine(code, msg, reset)
+// Write writes a formatted log line with an optional reset code
+func (p *Plain) Write(code, msg string, reset, newline, noHeader bool) {
+	if newline {
+		p.writeLine(code, msg, reset, noHeader)
 
 		return
 	}
 
-	p.writeString(code, msg, reset)
+	p.writeString(code, msg, reset, noHeader)
 }
 
-func (p *Plain) writeString(code, msg string, reset bool) {
+// Writeln writes a formatted log line with an optional reset code and a newline
+func (p *Plain) Writeln(code, msg string, reset, noHeader bool) {
+	p.Write(code, msg, reset, true, noHeader)
+}
+
+func (p *Plain) writeString(code, msg string, reset, noHeader bool) {
 	if !p.color && p.format == "" && strings.IndexByte(msg, '\x1b') == -1 {
 		if sw, ok := p.out.(io.StringWriter); ok {
 			p.writeLock.Lock()
@@ -156,7 +161,9 @@ func (p *Plain) writeString(code, msg string, reset bool) {
 	buf := *bp
 	buf = buf[:0]
 
-	buf = p.appendHeader(buf, code)
+	if !noHeader {
+		buf = p.appendHeader(buf, code)
+	}
 
 	buf = append(buf, msg...)
 
@@ -179,7 +186,7 @@ func (p *Plain) writeString(code, msg string, reset bool) {
 	}
 }
 
-func (p *Plain) writeLine(code, msg string, reset bool) {
+func (p *Plain) writeLine(code, msg string, reset, noHeader bool) {
 	if !p.color && p.format == "" && strings.IndexByte(msg, '\x1b') == -1 {
 		if sw, ok := p.out.(io.StringWriter); ok {
 			p.writeLock.Lock()
@@ -196,7 +203,9 @@ func (p *Plain) writeLine(code, msg string, reset bool) {
 	buf := *bp
 	buf = buf[:0]
 
-	buf = p.appendHeader(buf, code)
+	if !noHeader {
+		buf = p.appendHeader(buf, code)
+	}
 
 	buf = append(buf, msg...)
 
