@@ -40,8 +40,8 @@ func main() {
 
 	pl.Printf("You selected '%s'\n", options[index])
 
-	// optional, prevents leftover un-reset colors
-	pl.WaitForInterrupt(true)
+	// shortcut to block till we receive an interrupt
+	pl.WaitForInterrupt()
 
 	// cleanup code on exit...
 }

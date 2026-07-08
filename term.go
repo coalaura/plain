@@ -67,6 +67,33 @@ func getWriterFd(writer io.Writer) (int, bool) {
 	return 0, false
 }
 
+func (t *terminal) ReadLine() ([]byte, error) {
+	t.HideCursor()
+
+	var (
+		buf []byte
+		one [1]byte
+	)
+
+	for {
+		n, err := t.file.Read(one[:])
+		if err != nil {
+			return nil, err
+		}
+
+		if n == 0 {
+			continue
+		}
+
+		b := one[0]
+		if b == '\n' || b == '\r' {
+			return buf, nil
+		}
+
+		buf = append(buf, b)
+	}
+}
+
 func (t *terminal) Close() {
 	if !atomic.CompareAndSwapUint32(&t.closed, 0, 1) {
 		return

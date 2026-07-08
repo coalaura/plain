@@ -13,7 +13,7 @@ func main() {
 	pl.Errorln("Hello from Error")
 
 	confirmed, err := pl.ConfirmWithEcho("Confirm", true, " ")
-	pl.MustExit(err)
+	pl.MustFail(err)
 
 	if confirmed {
 		pl.Println("You confirmed")
@@ -22,19 +22,24 @@ func main() {
 	}
 
 	input, err := pl.Read("Input: ", 64)
-	pl.MustExit(err)
+	pl.MustFail(err)
 
 	pl.Printf("You entered '%s'\n", input)
 
 	key, err := pl.ReadOne("Key: ", true)
-	pl.MustExit(err)
+	pl.MustFail(err)
 
 	pl.Printf("You entered '%s'\n", string(key))
+
+	hidden, err := pl.ReadHidden("Hidden: ")
+	pl.MustFail(err)
+
+	pl.Printf("You entered '%s'\n", hidden)
 
 	options := []string{"Red", "Green", "Blue", "Yellow"}
 
 	index, err := pl.Select("Select: ", options)
-	pl.MustExit(err)
+	pl.MustFail(err)
 
 	pl.Printf("You selected '%s'\n", options[index])
 }

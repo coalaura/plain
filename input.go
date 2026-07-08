@@ -67,6 +67,57 @@ func (p *Plain) Read(prompt string, max int) (string, error) {
 	return string(res[:end]), nil
 }
 
+// ReadHidden displays a prompt aligned with the logger's format, reads a line from stdin without echoing input and prints a newline.
+func (p *Plain) ReadHidden(prompt string) (string, error) {
+	p.readLock.Lock()
+	defer p.readLock.Unlock()
+
+	bp := pool.Get().(*[]byte)
+	buf := *bp
+	buf = buf[:0]
+
+	defer func() {
+		if cap(buf) <= 4096 {
+			*bp = buf
+
+			pool.Put(bp)
+		}
+	}()
+
+	buf = p.appendPadding(buf)
+
+	buf = append(buf, prompt...)
+
+	if p.color {
+		buf = append(buf, p.theme.Input...)
+
+		defer io.WriteString(p.out, ansiReset)
+	}
+
+	p.out.Write(buf)
+
+	term, err := openTTY(false)
+	if err != nil {
+		return "", err
+	}
+
+	defer term.Close()
+
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer stop()
+
+	line, err := readCtx(ctx, p, term, (*terminal).ReadLine)
+	if err != nil {
+		io.WriteString(p.out, "\n")
+
+		return "", err
+	}
+
+	io.WriteString(p.out, "\n")
+
+	return string(line), nil
+}
+
 // ReadOne displays a prompt aligned with the logger's format and reads 1 byte from stdin.
 func (p *Plain) ReadOne(prompt string, echo bool) (rune, error) {
 	p.readLock.Lock()
