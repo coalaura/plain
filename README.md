@@ -9,7 +9,7 @@ go get -u github.com/coalaura/plain
 
 ### Quick start
 
-```golang
+```go
 import (
 	"github.com/coalaura/plain"
 )
@@ -22,7 +22,7 @@ func main() {
 	pl.Warnln("Hello from Warn")
 	pl.Errorln("Hello from Error")
 
-	confirmed, _ := pl.Confirm("Confirm", true)
+	confirmed, _ := pl.ConfirmWithEcho("Confirm", true, " ")
 
 	if confirmed {
 		pl.Println("You confirmed")
@@ -34,6 +34,18 @@ func main() {
 
 	pl.Printf("You entered '%s'\n", input)
 
+	key, _ := pl.ReadOne("Key: ", true)
+
+	pl.Printf("You entered '%s'\n", string(key))
+
+	hidden, _ := pl.ReadHidden("Hidden: ")
+
+	pl.Printf("You entered '%s'\n", hidden)
+
+	masked, _ := pl.ReadMask("Masked: ", plain.MaskStar)
+
+	pl.Printf("You entered '%s'\n", masked)
+
 	options := []string{"Red", "Green", "Blue", "Yellow"}
 
 	index, _ := pl.Select("Select: ", options)
@@ -44,6 +56,46 @@ func main() {
 	pl.WaitForInterrupt()
 
 	// cleanup code on exit...
+}
+```
+
+### Options
+
+```go
+// Set output target (defaults to os.Stdout)
+pl := plain.New(plain.WithTarget(os.Stderr))
+
+// Enable timestamps with a custom format
+pl := plain.New(plain.WithDate(plain.RFC3339Local))
+
+// Update at runtime
+pl.SetTarget(os.Stderr)
+pl.SetDate("")
+```
+
+### HTTP middleware
+
+```go
+pl := plain.New()
+
+mux := http.NewServeMux()
+// ...
+
+http.ListenAndServe(":8080", pl.Middleware()(mux))
+```
+
+### Error helpers
+
+```go
+// Panics if err is not nil
+pl.MustFail(err)
+
+// Logs the error and exits with code 1 if err is not nil
+pl.MustExit(err)
+
+// Check if an error came from an interrupted read
+if plain.IsInterrupted(err) {
+	// user pressed Ctrl+C
 }
 ```
 
