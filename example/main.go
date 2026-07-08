@@ -36,6 +36,11 @@ func main() {
 
 	pl.Printf("You entered '%s'\n", hidden)
 
+	masked, err := pl.ReadMask("Masked: ", plain.MaskStar)
+	pl.MustFail(err)
+
+	pl.Printf("You entered '%s'\n", masked)
+
 	options := []string{"Red", "Green", "Blue", "Yellow"}
 
 	index, err := pl.Select("Select: ", options)

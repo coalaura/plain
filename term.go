@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"sync/atomic"
+	"unicode/utf8"
 )
 
 const (
@@ -91,6 +92,50 @@ func (t *terminal) ReadLine() ([]byte, error) {
 		}
 
 		buf = append(buf, b)
+	}
+}
+
+func (t *terminal) ReadMasked(out io.Writer, mask rune) ([]byte, error) {
+	t.HideCursor()
+
+	var (
+		buf   []byte
+		one   [1]byte
+		maskB [4]byte
+	)
+
+	for {
+		n, err := t.file.Read(one[:])
+		if err != nil {
+			return nil, err
+		}
+
+		if n == 0 {
+			continue
+		}
+
+		b := one[0]
+
+		switch {
+		case b == '\n' || b == '\r':
+			return buf, nil
+		case b == '\b' || b == '\x7f':
+			if len(buf) > 0 {
+				buf = buf[:len(buf)-1]
+
+				io.WriteString(out, "\b \b")
+			}
+		case b < 0x20:
+			// skip other control chars
+		default:
+			buf = append(buf, b)
+
+			if mask != 0 {
+				sz := utf8.EncodeRune(maskB[:], mask)
+
+				out.Write(maskB[:sz])
+			}
+		}
 	}
 }
 

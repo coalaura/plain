@@ -9,6 +9,15 @@ import (
 	"time"
 )
 
+// Mask constants for ReadMask. Pass any rune to ReadMask; these are convenience
+// values for common masking characters. MaskNone disables on-screen echoing
+// entirely (behaviour equivalent to ReadHidden, but with backspace handling).
+const (
+	MaskStar = '*'
+	MaskDot  = '-'
+	MaskHash = '#'
+)
+
 // Read displays a prompt aligned with the logger's format and reads max bytes from stdin.
 func (p *Plain) Read(prompt string, max int) (string, error) {
 	p.readLock.Lock()
@@ -107,6 +116,60 @@ func (p *Plain) ReadHidden(prompt string) (string, error) {
 	defer stop()
 
 	line, err := readCtx(ctx, p, term, (*terminal).ReadLine)
+	if err != nil {
+		io.WriteString(p.out, "\n")
+
+		return "", err
+	}
+
+	io.WriteString(p.out, "\n")
+
+	return string(line), nil
+}
+
+// ReadMask displays a prompt aligned with the logger's format, reads a line from stdin masking each typed byte on screen, and prints a newline.
+func (p *Plain) ReadMask(prompt string, mask rune) (string, error) {
+	p.readLock.Lock()
+	defer p.readLock.Unlock()
+
+	bp := pool.Get().(*[]byte)
+	buf := *bp
+	buf = buf[:0]
+
+	defer func() {
+		if cap(buf) <= 4096 {
+			*bp = buf
+
+			pool.Put(bp)
+		}
+	}()
+
+	buf = p.appendPadding(buf)
+
+	buf = append(buf, prompt...)
+
+	if p.color {
+		buf = append(buf, p.theme.Input...)
+
+		defer io.WriteString(p.out, ansiReset)
+	}
+
+	p.out.Write(buf)
+
+	term, err := openTTY(false)
+	if err != nil {
+		return "", err
+	}
+
+	defer term.Close()
+
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer stop()
+
+	line, err := readCtx(ctx, p, term, func(t *terminal) ([]byte, error) {
+		return t.ReadMasked(p.out, mask)
+	})
+
 	if err != nil {
 		io.WriteString(p.out, "\n")
 
