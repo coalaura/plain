@@ -12,6 +12,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/coalaura/atom"
 	"golang.org/x/term"
 )
 
@@ -20,7 +21,20 @@ const (
 	RFC3339Local = "2006-01-02T15:04:05"
 
 	ansiReset = "\x1b[0m"
+)
 
+type Level uint8
+
+const (
+	LevelDebug Level = iota
+	LevelPrint
+	LevelWarn
+	LevelError
+)
+
+type themeColor uint8
+
+const (
 	Dimmed themeColor = iota
 	Success
 	Highlight
@@ -29,8 +43,6 @@ const (
 	Error
 	Reset
 )
-
-type themeColor int
 
 // Theme defines the ANSI color sequences used by the logger
 type Theme struct {
@@ -54,8 +66,9 @@ type Plain struct {
 	color bool
 	mode  int
 
+	level  atom.Value[Level]
+	format atom.Value[string]
 	theme  Theme
-	format string
 
 	readBuf []byte
 }
@@ -159,7 +172,7 @@ func (p *Plain) Writeln(code, msg string, reset, noHeader bool) {
 }
 
 func (p *Plain) writeString(code, msg string, reset, noHeader bool) {
-	if !p.color && p.format == "" && strings.IndexByte(msg, '\x1b') == -1 {
+	if !p.color && p.format.Load() == "" && strings.IndexByte(msg, '\x1b') == -1 {
 		if sw, ok := p.out.(io.StringWriter); ok {
 			p.writeLock.Lock()
 			sw.WriteString(msg)
@@ -202,7 +215,7 @@ func (p *Plain) writeString(code, msg string, reset, noHeader bool) {
 }
 
 func (p *Plain) writeLine(code, msg string, reset, noHeader bool) {
-	if !p.color && p.format == "" && strings.IndexByte(msg, '\x1b') == -1 {
+	if !p.color && p.format.Load() == "" && strings.IndexByte(msg, '\x1b') == -1 {
 		if sw, ok := p.out.(io.StringWriter); ok {
 			p.writeLock.Lock()
 			sw.WriteString(msg)
@@ -398,7 +411,9 @@ func (p *Plain) writeFormatLine(code string, reset bool, format string, a ...any
 }
 
 func (p *Plain) appendHeader(dst []byte, code string) []byte {
-	if p.format == "" {
+	format := p.format.Load()
+
+	if format == "" {
 		if p.color {
 			dst = append(dst, code...)
 		}
@@ -410,7 +425,7 @@ func (p *Plain) appendHeader(dst []byte, code string) []byte {
 		dst = append(dst, p.theme.Dimmed...)
 	}
 
-	dst = time.Now().AppendFormat(dst, p.format)
+	dst = time.Now().AppendFormat(dst, format)
 
 	if p.color {
 		if code != "" {

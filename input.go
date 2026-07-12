@@ -436,13 +436,15 @@ func (p *Plain) Select(prompt string, options []string) (int, error) {
 }
 
 func (p *Plain) appendPadding(dst []byte) []byte {
-	if p.format == "" {
+	format := p.format.Load()
+
+	if format == "" {
 		return dst
 	}
 
 	start := len(dst)
 
-	dst = time.Now().AppendFormat(dst, p.format)
+	dst = time.Now().AppendFormat(dst, format)
 
 	for i := start; i < len(dst); i++ {
 		dst[i] = ' '
