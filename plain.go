@@ -120,13 +120,11 @@ func (p *Plain) Theme(c themeColor) string {
 }
 
 // WaitForInterrupt blocks until SIGINT or SIGTERM is received
-func (p *Plain) WaitForInterrupt() error {
+func (p *Plain) WaitForInterrupt() {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer cancel()
 
 	<-ctx.Done()
-
-	return nil
 }
 
 // Write writes a formatted log line with an optional reset code
