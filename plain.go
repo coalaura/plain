@@ -9,6 +9,7 @@ import (
 	"os/signal"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	"golang.org/x/term"
@@ -121,10 +122,24 @@ func (p *Plain) Theme(c themeColor) string {
 
 // WaitForInterrupt blocks until SIGINT or SIGTERM is received
 func (p *Plain) WaitForInterrupt() {
-	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
 
 	<-ctx.Done()
+}
+
+// OnSignal registers a non-blocking handler that executes the provided callback
+// every time the specified signal is received.
+func (p *Plain) OnSignal(sig os.Signal, handler func()) {
+	ch := make(chan os.Signal, 1)
+
+	signal.Notify(ch, sig)
+
+	go func() {
+		for range ch {
+			handler()
+		}
+	}()
 }
 
 // Write writes a formatted log line with an optional reset code
