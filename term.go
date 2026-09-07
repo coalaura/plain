@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"sync/atomic"
+	"unicode"
 	"unicode/utf8"
 )
 
@@ -15,6 +16,7 @@ const (
 	arrowLeft
 	arrowRight
 	enter
+	cancel
 
 	ModeNone = iota - 1
 	ModeSome
@@ -23,7 +25,7 @@ const (
 )
 
 type terminal struct {
-	closed  uint32
+	closed  atomic.Uint32
 	file    *os.File
 	restore func()
 }
@@ -87,11 +89,62 @@ func (t *terminal) ReadLine() ([]byte, error) {
 		}
 
 		b := one[0]
-		if b == '\n' || b == '\r' {
+
+		switch {
+		case b == '\n' || b == '\r':
 			return buf, nil
+		case isWordBackspace(b):
+			buf, _ = deleteLastWord(buf)
+		case isBackspace(b):
+			buf, _ = deleteLastRune(buf)
+		case b < 0x20:
+			continue
+		default:
+			buf = append(buf, b)
+		}
+	}
+}
+
+func (t *terminal) ReadVisible(out io.Writer, buf []byte, max int) ([]byte, error) {
+	var one [1]byte
+
+	for {
+		n, err := t.file.Read(one[:])
+		if err != nil {
+			return nil, err
 		}
 
-		buf = append(buf, b)
+		if n == 0 {
+			continue
+		}
+
+		b := one[0]
+
+		switch {
+		case b == '\n' || b == '\r':
+			return buf, nil
+		case isWordBackspace(b):
+			previous := buf
+
+			var removed int
+
+			buf, removed = deleteLastWord(buf)
+
+			eraseVisibleInput(out, previous[len(previous)-removed:])
+		case isBackspace(b):
+			previous := buf
+
+			var removed int
+
+			buf, removed = deleteLastRune(buf)
+
+			eraseVisibleInput(out, previous[len(previous)-removed:])
+		case b < 0x20:
+			continue
+		case len(buf) < max:
+			buf = append(buf, b)
+			_, _ = out.Write(one[:])
+		}
 	}
 }
 
@@ -119,14 +172,20 @@ func (t *terminal) ReadMasked(out io.Writer, mask rune) ([]byte, error) {
 		switch {
 		case b == '\n' || b == '\r':
 			return buf, nil
-		case b == '\b' || b == '\x7f':
-			if len(buf) > 0 {
-				buf = buf[:len(buf)-1]
+		case isWordBackspace(b):
+			var removed int
 
-				io.WriteString(out, "\b \b")
-			}
+			buf, removed = deleteLastWord(buf)
+
+			eraseMaskedInput(out, mask, removed)
+		case isBackspace(b):
+			var removed int
+
+			buf, removed = deleteLastRune(buf)
+
+			eraseMaskedInput(out, mask, removed)
 		case b < 0x20:
-			// skip other control chars
+			continue
 		default:
 			buf = append(buf, b)
 
@@ -140,7 +199,7 @@ func (t *terminal) ReadMasked(out io.Writer, mask rune) ([]byte, error) {
 }
 
 func (t *terminal) Close() {
-	if !atomic.CompareAndSwapUint32(&t.closed, 0, 1) {
+	if !t.closed.CompareAndSwap(0, 1) {
 		return
 	}
 
@@ -148,5 +207,55 @@ func (t *terminal) Close() {
 
 	if t.restore != nil {
 		t.restore()
+	}
+}
+
+func deleteLastRune(buf []byte) ([]byte, int) {
+	if len(buf) == 0 {
+		return buf, 0
+	}
+
+	_, size := utf8.DecodeLastRune(buf)
+
+	return buf[:len(buf)-size], size
+}
+
+func deleteLastWord(buf []byte) ([]byte, int) {
+	end := len(buf)
+
+	for len(buf) > 0 {
+		value, size := utf8.DecodeLastRune(buf)
+		if !unicode.IsSpace(value) {
+			break
+		}
+
+		buf = buf[:len(buf)-size]
+	}
+
+	for len(buf) > 0 {
+		value, size := utf8.DecodeLastRune(buf)
+		if unicode.IsSpace(value) {
+			break
+		}
+
+		buf = buf[:len(buf)-size]
+	}
+
+	return buf, end - len(buf)
+}
+
+func eraseMaskedInput(out io.Writer, mask rune, count int) {
+	if mask == 0 {
+		return
+	}
+
+	for range count {
+		io.WriteString(out, "\b \b")
+	}
+}
+
+func eraseVisibleInput(out io.Writer, value []byte) {
+	for range utf8.RuneCount(value) {
+		_, _ = io.WriteString(out, "\b \b")
 	}
 }

@@ -89,6 +89,7 @@ func openTTY(virtual bool) (*terminal, error) {
 	err = windows.SetConsoleMode(handle, mode)
 	if err != nil {
 		f.Close()
+
 		return nil, err
 	}
 
@@ -148,6 +149,8 @@ func (t *terminal) ReadArrow() (int, error) {
 			return arrowLeft, nil
 		case '\r', '\n':
 			return enter, nil
+		case '\x1b':
+			return cancel, nil
 		}
 	}
 
@@ -207,4 +210,12 @@ func (t *terminal) ShowCursor() {
 	cci.visible = 1
 
 	procSetConsoleCursorInfo.Call(uintptr(handle), uintptr(unsafe.Pointer(&cci)))
+}
+
+func isBackspace(value byte) bool {
+	return value == '\b'
+}
+
+func isWordBackspace(value byte) bool {
+	return value == '\x17' || value == '\x7f'
 }

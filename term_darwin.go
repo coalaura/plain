@@ -54,7 +54,8 @@ func openTTY(_ bool) (*terminal, error) {
 	termios.Cc[unix.VMIN] = 1
 	termios.Cc[unix.VTIME] = 0
 
-	if err := unix.IoctlSetTermios(fd, unix.TIOCSETA, termios); err != nil {
+	err = unix.IoctlSetTermios(fd, unix.TIOCSETA, termios)
+	if err != nil {
 		f.Close()
 
 		return nil, err
@@ -116,6 +117,8 @@ func (t *terminal) ReadArrow() (int, error) {
 			return arrowLeft, nil
 		case '\r', '\n':
 			return enter, nil
+		case '\x1b':
+			return cancel, nil
 		}
 	}
 
@@ -141,4 +144,12 @@ func (t *terminal) HideCursor() {
 
 func (t *terminal) ShowCursor() {
 	os.Stdout.WriteString("\x1b[?25h")
+}
+
+func isBackspace(value byte) bool {
+	return value == '\b' || value == '\x7f'
+}
+
+func isWordBackspace(value byte) bool {
+	return value == '\x17'
 }

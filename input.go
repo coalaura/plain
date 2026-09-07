@@ -6,7 +6,11 @@ import (
 	"io"
 	"os"
 	"os/signal"
+	"strings"
 	"time"
+	"unicode/utf8"
+
+	"golang.org/x/term"
 )
 
 // Mask constants for ReadMask. Pass any rune to ReadMask; these are convenience
@@ -28,6 +32,10 @@ type SelectOption interface {
 func (p *Plain) Read(prompt string, max int) (string, error) {
 	p.readLock.Lock()
 	defer p.readLock.Unlock()
+
+	if max < 0 {
+		panic("plain: negative maximum input length")
+	}
 
 	bp := pool.Get().(*[]byte)
 
@@ -54,32 +62,36 @@ func (p *Plain) Read(prompt string, max int) (string, error) {
 
 	p.out.Write(buf)
 
-	res := p.readBuf
-	if cap(res) < max {
-		res = make([]byte, max)
-
-		p.readBuf = res
-	}
-
-	res = res[:max]
-
-	n, err := os.Stdin.Read(res)
+	term, err := openTTY(false)
 	if err != nil {
 		return "", err
 	}
 
-	end := n
+	defer term.Close()
 
-	for end > 0 {
-		b := res[end-1]
-		if b != '\n' && b != '\r' {
-			break
-		}
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer stop()
 
-		end--
+	lineBuf := p.readBuf
+	if cap(lineBuf) < max {
+		lineBuf = make([]byte, 0, max)
+
+		p.readBuf = lineBuf
 	}
 
-	return string(res[:end]), nil
+	line, err := readCtx(ctx, p, term, func(t *terminal) ([]byte, error) {
+		return t.ReadVisible(p.out, lineBuf[:0], max)
+	})
+
+	if err != nil {
+		io.WriteString(p.out, "\n")
+
+		return "", err
+	}
+
+	io.WriteString(p.out, "\n")
+
+	return string(line), nil
 }
 
 // ReadHidden displays a prompt aligned with the logger's format, reads a line from stdin without echoing input and prints a newline.
@@ -364,13 +376,14 @@ func (p *Plain) SelectWithDescription(prompt string, options []SelectOption) (in
 }
 
 func (p *Plain) selectOption(prompt string, optionCount int, showDescription bool, optionAt func(int) (string, string)) (int, error) {
+	if optionCount == 0 {
+		return 0, ErrNoOptions
+	}
+
 	p.readLock.Lock()
 	defer p.readLock.Unlock()
 
-	var (
-		index  int
-		length int
-	)
+	index := 0
 
 	bp := pool.Get().(*[]byte)
 
@@ -392,6 +405,30 @@ func (p *Plain) selectOption(prompt string, optionCount int, showDescription boo
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
 
+	input := make(chan result[int], 1)
+
+	go func() {
+		for {
+			value, err := term.ReadArrow()
+
+			readResult := result[int]{value, err}
+
+			select {
+			case input <- readResult:
+			case <-ctx.Done():
+				return
+			}
+
+			if err != nil {
+				return
+			}
+		}
+	}()
+
+	resize := time.NewTicker(100 * time.Millisecond)
+	defer resize.Stop()
+
+	lastWidth := selectWidth()
 	rendered := false
 
 	defer func() {
@@ -407,14 +444,67 @@ func (p *Plain) selectOption(prompt string, optionCount int, showDescription boo
 		p.out.Write(buf)
 	}()
 
+	redraw := true
+
 	for {
+		if !redraw {
+			select {
+			case <-ctx.Done():
+				return 0, ErrInterrupted
+			case readResult := <-input:
+				if readResult.err != nil {
+					return 0, readResult.err
+				}
+
+				switch readResult.val {
+				case arrowRight, arrowDown:
+					index++
+
+					if index >= optionCount {
+						index = 0
+					}
+				case arrowLeft, arrowUp:
+					index--
+
+					if index < 0 {
+						index = optionCount - 1
+					}
+				case enter:
+					if !showDescription {
+						p.out.Write([]byte("\n"))
+					}
+
+					return index, nil
+				case cancel:
+					return 0, ErrInterrupted
+				}
+
+				redraw = true
+			case <-resize.C:
+				width := selectWidth()
+				if width != lastWidth {
+					lastWidth = width
+					redraw = true
+				}
+			}
+
+			continue
+		}
+
 		buf = buf[:0]
 
 		label, description := optionAt(index)
 
-		buf = append(buf, '\r')
+		buf = append(buf, "\r\x1b[2K"...)
+
+		lineStart := len(buf)
 
 		buf = p.appendPadding(buf)
+
+		usedWidth := len(buf) - lineStart
+		usedWidth += utf8.RuneCountInString(prompt)
+
+		label = truncateSelectText(label, availableSelectWidth(usedWidth))
 
 		if p.color {
 			buf = append(buf, ansiReset...)
@@ -428,17 +518,6 @@ func (p *Plain) selectOption(prompt string, optionCount int, showDescription boo
 
 		buf = append(buf, label...)
 
-		l := len(label)
-		if l < length {
-			remaining := length - l
-
-			for range remaining {
-				buf = append(buf, ' ')
-			}
-		}
-
-		length = len(label)
-
 		if p.color {
 			buf = append(buf, ansiReset...)
 		}
@@ -450,39 +529,20 @@ func (p *Plain) selectOption(prompt string, optionCount int, showDescription boo
 		p.out.Write(buf)
 
 		rendered = true
-
-		i, err := readCtx(ctx, p, term, (*terminal).ReadArrow)
-		if err != nil {
-			return 0, err
-		}
-
-		switch i {
-		case arrowRight, arrowDown:
-			index++
-
-			if index >= optionCount {
-				index = 0
-			}
-		case arrowLeft, arrowUp:
-			index--
-
-			if index < 0 {
-				index = optionCount - 1
-			}
-		case enter:
-			if !showDescription {
-				p.out.Write([]byte("\n"))
-			}
-
-			return index, nil
-		}
+		redraw = false
 	}
 }
 
 func (p *Plain) appendSelectDescription(dst []byte, description string, returnToSelect bool) []byte {
 	dst = append(dst, "\n\r\x1b[J"...)
 
+	lineStart := len(dst)
+
 	dst = p.appendPadding(dst)
+
+	usedWidth := len(dst) - lineStart
+
+	description = truncateSelectText(description, availableSelectWidth(usedWidth))
 
 	if p.color {
 		dst = append(dst, p.theme.Dimmed...)
@@ -521,6 +581,53 @@ func (p *Plain) appendPadding(dst []byte) []byte {
 	dst = append(dst, ' ')
 
 	return dst
+}
+
+func selectWidth() int {
+	width, _, err := term.GetSize(int(os.Stdout.Fd()))
+	if err != nil {
+		return -1
+	}
+
+	return width
+}
+
+func availableSelectWidth(usedWidth int) int {
+	width := selectWidth()
+	if width < 0 {
+		return -1
+	}
+
+	available := width - usedWidth
+	if available < 0 {
+		return 0
+	}
+
+	return available
+}
+
+func truncateSelectText(text string, width int) string {
+	lineEnd := strings.IndexAny(text, "\r\n")
+	if lineEnd >= 0 {
+		text = text[:lineEnd]
+	}
+
+	if width < 0 {
+		return text
+	}
+
+	runeCount := utf8.RuneCountInString(text)
+	if runeCount <= width {
+		return text
+	}
+
+	if width <= 3 {
+		return strings.Repeat(".", width)
+	}
+
+	runes := []rune(text)
+
+	return string(runes[:width-3]) + "..."
 }
 
 // AsStrings converts a slice/array of any type to a slice of strings
