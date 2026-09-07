@@ -4,9 +4,22 @@ import (
 	"github.com/coalaura/plain"
 )
 
-var pl = plain.New()
+type colorOption struct {
+	label       string
+	description string
+}
+
+func (o colorOption) Label() string {
+	return o.label
+}
+
+func (o colorOption) Description() string {
+	return o.description
+}
 
 func main() {
+	pl := plain.New()
+
 	pl.Debugln("Hello from Debug")
 	pl.Println("Hello from Print")
 	pl.Warnln("Hello from Warn")
@@ -41,10 +54,15 @@ func main() {
 
 	pl.Printf("You entered '%s'\n", masked)
 
-	options := []string{"Red", "Green", "Blue", "Yellow"}
+	options := []plain.SelectOption{
+		colorOption{"Red", "A warm, energetic color often associated with passion and urgency."},
+		colorOption{"Green", "A natural, balanced color that suggests growth and tranquility."},
+		colorOption{"Blue", "A cool, calming color commonly associated with trust and stability."},
+		colorOption{"Yellow", "A bright, optimistic color that evokes sunshine and creativity."},
+	}
 
-	index, err := pl.Select("Select: ", options)
+	index, err := pl.SelectWithDescription("Select: ", options)
 	pl.MustFail(err)
 
-	pl.Printf("You selected '%s'\n", options[index])
+	pl.Printf("You selected '%s'\n", options[index].Label())
 }

@@ -18,6 +18,12 @@ const (
 	MaskHash = '#'
 )
 
+// SelectOption provides the label and description for SelectWithDescription.
+type SelectOption interface {
+	Label() string
+	Description() string
+}
+
 // Read displays a prompt aligned with the logger's format and reads max bytes from stdin.
 func (p *Plain) Read(prompt string, max int) (string, error) {
 	p.readLock.Lock()
@@ -343,6 +349,22 @@ func (p *Plain) ConfirmWithEcho(prompt string, defaultYes bool, prefix string) (
 
 // Select displays a cyclic selector aligned with the logger's format.
 func (p *Plain) Select(prompt string, options []string) (int, error) {
+	return p.selectOption(prompt, len(options), false, func(index int) (string, string) {
+		return options[index], ""
+	})
+}
+
+// SelectWithDescription displays a cyclic selector with the selected option's
+// description on the line below it.
+func (p *Plain) SelectWithDescription(prompt string, options []SelectOption) (int, error) {
+	return p.selectOption(prompt, len(options), true, func(index int) (string, string) {
+		option := options[index]
+
+		return option.Label(), option.Description()
+	})
+}
+
+func (p *Plain) selectOption(prompt string, optionCount int, showDescription bool, optionAt func(int) (string, string)) (int, error) {
 	p.readLock.Lock()
 	defer p.readLock.Unlock()
 
@@ -371,10 +393,25 @@ func (p *Plain) Select(prompt string, options []string) (int, error) {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
 
+	rendered := false
+
+	defer func() {
+		if !showDescription || !rendered {
+			return
+		}
+
+		_, description := optionAt(index)
+
+		buf = buf[:0]
+		buf = p.appendSelectDescription(buf, description, false)
+
+		p.out.Write(buf)
+	}()
+
 	for {
 		buf = buf[:0]
 
-		label := options[index]
+		label, description := optionAt(index)
 
 		buf = append(buf, '\r')
 
@@ -407,7 +444,13 @@ func (p *Plain) Select(prompt string, options []string) (int, error) {
 			buf = append(buf, ansiReset...)
 		}
 
+		if showDescription {
+			buf = p.appendSelectDescription(buf, description, true)
+		}
+
 		p.out.Write(buf)
+
+		rendered = true
 
 		i, err := readCtx(ctx, p, term, (*terminal).ReadArrow)
 		if err != nil {
@@ -418,21 +461,47 @@ func (p *Plain) Select(prompt string, options []string) (int, error) {
 		case arrowRight, arrowDown:
 			index++
 
-			if index >= len(options) {
+			if index >= optionCount {
 				index = 0
 			}
 		case arrowLeft, arrowUp:
 			index--
 
 			if index < 0 {
-				index = len(options) - 1
+				index = optionCount - 1
 			}
 		case enter:
-			p.out.Write([]byte("\n"))
+			if !showDescription {
+				p.out.Write([]byte("\n"))
+			}
 
 			return index, nil
 		}
 	}
+}
+
+func (p *Plain) appendSelectDescription(dst []byte, description string, returnToSelect bool) []byte {
+	dst = append(dst, "\n\r\x1b[J"...)
+
+	dst = p.appendPadding(dst)
+
+	if p.color {
+		dst = append(dst, p.theme.Dimmed...)
+	}
+
+	dst = append(dst, description...)
+
+	if p.color {
+		dst = append(dst, ansiReset...)
+	}
+
+	if returnToSelect {
+		dst = append(dst, "\x1b[1A\r"...)
+
+		return dst
+	}
+
+	return append(dst, '\n')
 }
 
 func (p *Plain) appendPadding(dst []byte) []byte {
