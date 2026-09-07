@@ -354,8 +354,7 @@ func (p *Plain) Select(prompt string, options []string) (int, error) {
 	})
 }
 
-// SelectWithDescription displays a cyclic selector with the selected option's
-// description on the line below it.
+// SelectWithDescription displays a cyclic selector with the selected option's description on the line below it.
 func (p *Plain) SelectWithDescription(prompt string, options []SelectOption) (int, error) {
 	return p.selectOption(prompt, len(options), true, func(index int) (string, string) {
 		option := options[index]
