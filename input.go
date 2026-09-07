@@ -62,36 +62,32 @@ func (p *Plain) Read(prompt string, max int) (string, error) {
 
 	p.out.Write(buf)
 
-	term, err := openTTY(false)
+	res := p.readBuf
+	if cap(res) < max {
+		res = make([]byte, max)
+
+		p.readBuf = res
+	}
+
+	res = res[:max]
+
+	n, err := os.Stdin.Read(res)
 	if err != nil {
 		return "", err
 	}
 
-	defer term.Close()
+	end := n
 
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
-	defer stop()
+	for end > 0 {
+		b := res[end-1]
+		if b != '\n' && b != '\r' {
+			break
+		}
 
-	lineBuf := p.readBuf
-	if cap(lineBuf) < max {
-		lineBuf = make([]byte, 0, max)
-
-		p.readBuf = lineBuf
+		end--
 	}
 
-	line, err := readCtx(ctx, p, term, func(t *terminal) ([]byte, error) {
-		return t.ReadVisible(p.out, lineBuf[:0], max)
-	})
-
-	if err != nil {
-		io.WriteString(p.out, "\n")
-
-		return "", err
-	}
-
-	io.WriteString(p.out, "\n")
-
-	return string(line), nil
+	return string(res[:end]), nil
 }
 
 // ReadHidden displays a prompt aligned with the logger's format, reads a line from stdin without echoing input and prints a newline.
