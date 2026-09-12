@@ -2,14 +2,12 @@ package plain
 
 import (
 	"bytes"
-	"context"
 	"fmt"
 	"io"
 	"os"
 	"os/signal"
 	"strings"
 	"sync"
-	"syscall"
 	"time"
 
 	"github.com/coalaura/atom"
@@ -17,12 +15,8 @@ import (
 	"golang.org/x/term"
 )
 
-const (
-	// RFC3339Local is an RFC3339-like time format without timezone information
-	RFC3339Local = "2006-01-02T15:04:05"
-
-	ansiReset = "\x1b[0m"
-)
+// RFC3339Local is an RFC3339-like time format without timezone information
+const RFC3339Local = "2006-01-02T15:04:05"
 
 type Level uint8
 
@@ -131,15 +125,12 @@ func (p *Plain) Theme(c themeColor) string {
 		return ""
 	}
 
-	return ansiReset
+	return internal.AnsiReset
 }
 
 // WaitForInterrupt blocks until SIGINT or SIGTERM is received
 func (p *Plain) WaitForInterrupt() {
-	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer cancel()
-
-	<-ctx.Done()
+	internal.WaitForInterrupt()
 }
 
 // OnSignal registers a non-blocking handler that executes the provided callback
@@ -197,11 +188,11 @@ func (p *Plain) writeString(code, msg string, reset, noHeader bool) {
 	buf = append(buf, msg...)
 
 	if p.color && reset {
-		buf = append(buf, ansiReset...)
+		buf = append(buf, internal.AnsiReset...)
 	}
 
 	if !p.color && bytes.IndexByte(buf, '\x1b') >= 0 {
-		buf = p.stripANSI(buf)
+		buf = internal.StripANSI(buf)
 	}
 
 	p.writeLock.Lock()
@@ -241,13 +232,13 @@ func (p *Plain) writeLine(code, msg string, reset, noHeader bool) {
 	buf = append(buf, msg...)
 
 	if p.color && reset {
-		buf = append(buf, ansiReset...)
+		buf = append(buf, internal.AnsiReset...)
 	}
 
 	buf = append(buf, '\n')
 
 	if !p.color && bytes.IndexByte(buf, '\x1b') >= 0 {
-		buf = p.stripANSI(buf)
+		buf = internal.StripANSI(buf)
 	}
 
 	p.writeLock.Lock()
@@ -282,11 +273,11 @@ func (p *Plain) writeArgs(code string, reset, nl bool, a ...any) {
 	}
 
 	if p.color && reset {
-		buf = append(buf, ansiReset...)
+		buf = append(buf, internal.AnsiReset...)
 	}
 
 	if !p.color && bytes.IndexByte(buf, '\x1b') >= 0 {
-		buf = p.stripANSI(buf)
+		buf = internal.StripANSI(buf)
 	}
 
 	p.writeLock.Lock()
@@ -313,13 +304,13 @@ func (p *Plain) writeArgsLine(code string, reset bool, a ...any) {
 	}
 
 	if p.color && reset {
-		buf = append(buf, ansiReset...)
+		buf = append(buf, internal.AnsiReset...)
 	}
 
 	buf = append(buf, '\n')
 
 	if !p.color && bytes.IndexByte(buf, '\x1b') >= 0 {
-		buf = p.stripANSI(buf)
+		buf = internal.StripANSI(buf)
 	}
 
 	p.writeLock.Lock()
@@ -356,11 +347,11 @@ func (p *Plain) writeFormat(code string, reset, nl bool, format string, a ...any
 	}
 
 	if p.color && reset {
-		buf = append(buf, ansiReset...)
+		buf = append(buf, internal.AnsiReset...)
 	}
 
 	if !p.color && bytes.IndexByte(buf, '\x1b') >= 0 {
-		buf = p.stripANSI(buf)
+		buf = internal.StripANSI(buf)
 	}
 
 	p.writeLock.Lock()
@@ -389,13 +380,13 @@ func (p *Plain) writeFormatLine(code string, reset bool, format string, a ...any
 	}
 
 	if p.color && reset {
-		buf = append(buf, ansiReset...)
+		buf = append(buf, internal.AnsiReset...)
 	}
 
 	buf = append(buf, '\n')
 
 	if !p.color && bytes.IndexByte(buf, '\x1b') >= 0 {
-		buf = p.stripANSI(buf)
+		buf = internal.StripANSI(buf)
 	}
 
 	p.writeLock.Lock()
@@ -432,71 +423,13 @@ func (p *Plain) appendHeader(dst []byte, code string) []byte {
 		if code != "" {
 			dst = append(dst, code...)
 		} else {
-			dst = append(dst, ansiReset...)
+			dst = append(dst, internal.AnsiReset...)
 		}
 	}
 
 	dst = append(dst, ' ')
 
 	return dst
-}
-
-func (p *Plain) stripANSI(buf []byte) []byte {
-	var j int
-
-	for i := 0; i < len(buf); {
-		// ESC sequence?
-		if buf[i] == '\x1b' && i+1 < len(buf) {
-			switch buf[i+1] {
-			case '[':
-				// CSI: ESC [ ... final_byte (0x40-0x7E)
-				i += 2
-
-				for i < len(buf) && (buf[i] < 0x40 || buf[i] > 0x7E) {
-					i++
-				}
-
-				if i < len(buf) {
-					i++ // skip the final byte too
-				}
-
-				continue
-			case ']':
-				// OSC: ESC ] ... BEL (0x07) or ST (ESC \)
-				i += 2
-
-				for i < len(buf) {
-					if buf[i] == '\x07' {
-						i++
-
-						break
-					}
-
-					if buf[i] == '\x1b' && i+1 < len(buf) && buf[i+1] == '\\' {
-						i += 2
-
-						break
-					}
-
-					i++
-				}
-
-				continue
-			default:
-				// Other 2-byte escapes (ESC ( etc.)
-				i += 2
-
-				continue
-			}
-		}
-
-		buf[j] = buf[i]
-
-		j++
-		i++
-	}
-
-	return buf[:j]
 }
 
 func color(mode int, some, bit8, full string) string {
