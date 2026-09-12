@@ -1,10 +1,14 @@
 package plain
 
-import "errors"
+import (
+	"errors"
+
+	"github.com/coalaura/plain/internal"
+)
 
 var (
 	// ErrInterrupted indicates that an input operation was cancelled.
-	ErrInterrupted = errors.New("interrupted")
+	ErrInterrupted = internal.ErrInterrupted
 
 	// ErrNoOptions indicates that a selector was opened without any options.
 	ErrNoOptions = errors.New("no options")

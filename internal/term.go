@@ -1,7 +1,8 @@
-package plain
+package internal
 
 import (
 	"context"
+	"errors"
 	"io"
 	"os"
 	"sync/atomic"
@@ -10,13 +11,13 @@ import (
 )
 
 const (
-	invalidInput = iota
-	arrowUp
-	arrowDown
-	arrowLeft
-	arrowRight
-	enter
-	cancel
+	InvalidInput = iota
+	ArrowUp
+	ArrowDown
+	ArrowLeft
+	ArrowRight
+	Enter
+	Cancel
 
 	ModeNone = iota - 1
 	ModeSome
@@ -24,7 +25,9 @@ const (
 	ModeFull
 )
 
-type terminal struct {
+var ErrInterrupted = errors.New("interrupted")
+
+type Terminal struct {
 	closed  atomic.Uint32
 	file    *os.File
 	restore func()
@@ -34,31 +37,35 @@ type fdGetter interface {
 	Fd() uintptr
 }
 
-type result[T any] struct {
-	val T
-	err error
+type Result[T any] struct {
+	Val T
+	Err error
 }
 
-func readCtx[T any](ctx context.Context, p *Plain, t *terminal, readFn func(*terminal) (T, error)) (T, error) {
+func NewResult[T any](val T, err error) Result[T] {
+	return Result[T]{val, err}
+}
+
+func ReadCtx[T any](ctx context.Context, t *Terminal, readFn func(*Terminal) (T, error)) (T, error) {
 	var zero T
 
-	resCh := make(chan result[T], 1)
+	resCh := make(chan Result[T], 1)
 
 	go func() {
 		val, err := readFn(t)
 
-		resCh <- result[T]{val, err}
+		resCh <- Result[T]{val, err}
 	}()
 
 	select {
 	case <-ctx.Done():
 		return zero, ErrInterrupted
 	case res := <-resCh:
-		return res.val, res.err
+		return res.Val, res.Err
 	}
 }
 
-func getWriterFd(writer io.Writer) (int, bool) {
+func GetWriterFd(writer io.Writer) (int, bool) {
 	if f, ok := writer.(*os.File); ok {
 		return int(f.Fd()), true
 	}
@@ -70,7 +77,7 @@ func getWriterFd(writer io.Writer) (int, bool) {
 	return 0, false
 }
 
-func (t *terminal) ReadLine() ([]byte, error) {
+func (t *Terminal) ReadLine() ([]byte, error) {
 	t.HideCursor()
 
 	var (
@@ -105,7 +112,7 @@ func (t *terminal) ReadLine() ([]byte, error) {
 	}
 }
 
-func (t *terminal) ReadVisible(out io.Writer, buf []byte, max int) ([]byte, error) {
+func (t *Terminal) ReadVisible(out io.Writer, buf []byte, max int) ([]byte, error) {
 	var one [1]byte
 
 	for {
@@ -148,7 +155,7 @@ func (t *terminal) ReadVisible(out io.Writer, buf []byte, max int) ([]byte, erro
 	}
 }
 
-func (t *terminal) ReadMasked(out io.Writer, mask rune) ([]byte, error) {
+func (t *Terminal) ReadMasked(out io.Writer, mask rune) ([]byte, error) {
 	t.HideCursor()
 
 	var (
@@ -198,7 +205,7 @@ func (t *terminal) ReadMasked(out io.Writer, mask rune) ([]byte, error) {
 	}
 }
 
-func (t *terminal) Close() {
+func (t *Terminal) Close() {
 	if !t.closed.CompareAndSwap(0, 1) {
 		return
 	}

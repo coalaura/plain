@@ -1,6 +1,6 @@
-//go:build linux
+//go:build darwin || freebsd || netbsd || openbsd
 
-package plain
+package internal
 
 import (
 	"os"
@@ -9,7 +9,7 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-func detectColorLevel(_ int) int {
+func DetectColorLevel(_ int) int {
 	if os.Getenv("NO_COLOR") != "" {
 		return ModeNone
 	}
@@ -31,7 +31,7 @@ func detectColorLevel(_ int) int {
 	return ModeSome
 }
 
-func openTTY(_ bool) (*terminal, error) {
+func OpenTTY(_ bool) (*Terminal, error) {
 	f, err := os.OpenFile("/dev/tty", os.O_RDWR, 0644)
 	if err != nil {
 		return nil, err
@@ -39,7 +39,7 @@ func openTTY(_ bool) (*terminal, error) {
 
 	fd := int(f.Fd())
 
-	termios, err := unix.IoctlGetTermios(fd, unix.TCGETS)
+	termios, err := unix.IoctlGetTermios(fd, unix.TIOCGETA)
 	if err != nil {
 		f.Close()
 
@@ -54,22 +54,22 @@ func openTTY(_ bool) (*terminal, error) {
 	termios.Cc[unix.VMIN] = 1
 	termios.Cc[unix.VTIME] = 0
 
-	err = unix.IoctlSetTermios(fd, unix.TCSETS, termios)
+	err = unix.IoctlSetTermios(fd, unix.TIOCSETA, termios)
 	if err != nil {
 		f.Close()
 
 		return nil, err
 	}
 
-	return &terminal{
+	return &Terminal{
 		file: f,
 		restore: func() {
-			_ = unix.IoctlSetTermios(fd, unix.TCSETS, &oldState)
+			_ = unix.IoctlSetTermios(fd, unix.TIOCSETA, &oldState)
 		},
 	}, nil
 }
 
-func (t *terminal) ReadKey() (rune, error) {
+func (t *Terminal) ReadKey() (rune, error) {
 	t.HideCursor()
 
 	var buf [1]byte
@@ -95,54 +95,54 @@ func (t *terminal) ReadKey() (rune, error) {
 	}
 }
 
-func (t *terminal) ReadArrow() (int, error) {
+func (t *Terminal) ReadArrow() (int, error) {
 	t.HideCursor()
 
 	var buf [256]byte
 
 	num, err := t.file.Read(buf[:])
 	if err != nil {
-		return invalidInput, err
+		return InvalidInput, err
 	}
 
 	if num == 1 {
 		switch buf[0] {
 		case 'w':
-			return arrowUp, nil
+			return ArrowUp, nil
 		case 's':
-			return arrowDown, nil
+			return ArrowDown, nil
 		case 'd':
-			return arrowRight, nil
+			return ArrowRight, nil
 		case 'a':
-			return arrowLeft, nil
+			return ArrowLeft, nil
 		case '\r', '\n':
-			return enter, nil
+			return Enter, nil
 		case '\x1b':
-			return cancel, nil
+			return Cancel, nil
 		}
 	}
 
 	if num >= 3 && buf[0] == '\x1b' && buf[1] == '[' {
 		switch buf[2] {
 		case 'A':
-			return arrowUp, nil
+			return ArrowUp, nil
 		case 'B':
-			return arrowDown, nil
+			return ArrowDown, nil
 		case 'C':
-			return arrowRight, nil
+			return ArrowRight, nil
 		case 'D':
-			return arrowLeft, nil
+			return ArrowLeft, nil
 		}
 	}
 
-	return invalidInput, nil
+	return InvalidInput, nil
 }
 
-func (t *terminal) HideCursor() {
+func (t *Terminal) HideCursor() {
 	os.Stdout.WriteString("\x1b[?25l")
 }
 
-func (t *terminal) ShowCursor() {
+func (t *Terminal) ShowCursor() {
 	os.Stdout.WriteString("\x1b[?25h")
 }
 

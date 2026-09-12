@@ -1,6 +1,6 @@
 //go:build windows
 
-package plain
+package internal
 
 import (
 	"os"
@@ -26,7 +26,7 @@ const (
 	enableVirtualTerminalProcessing = 0x0004
 )
 
-func detectColorLevel(fd int) int {
+func DetectColorLevel(fd int) int {
 	if os.Getenv("NO_COLOR") != "" {
 		return ModeNone
 	}
@@ -60,7 +60,7 @@ func detectColorLevel(fd int) int {
 	return ModeSome
 }
 
-func openTTY(virtual bool) (*terminal, error) {
+func OpenTTY(virtual bool) (*Terminal, error) {
 	f, err := os.OpenFile("CONIN$", os.O_RDWR, 0644)
 	if err != nil {
 		return nil, err
@@ -93,7 +93,7 @@ func openTTY(virtual bool) (*terminal, error) {
 		return nil, err
 	}
 
-	return &terminal{
+	return &Terminal{
 		file: f,
 		restore: func() {
 			windows.SetConsoleMode(handle, oldMode)
@@ -101,7 +101,7 @@ func openTTY(virtual bool) (*terminal, error) {
 	}, nil
 }
 
-func (t *terminal) ReadKey() (rune, error) {
+func (t *Terminal) ReadKey() (rune, error) {
 	t.HideCursor()
 
 	var buf [1]byte
@@ -127,30 +127,30 @@ func (t *terminal) ReadKey() (rune, error) {
 	}
 }
 
-func (t *terminal) ReadArrow() (int, error) {
+func (t *Terminal) ReadArrow() (int, error) {
 	t.HideCursor()
 
 	var buf [256]byte
 
 	num, err := t.file.Read(buf[:])
 	if err != nil {
-		return invalidInput, err
+		return InvalidInput, err
 	}
 
 	if num == 1 {
 		switch buf[0] {
 		case 'w':
-			return arrowUp, nil
+			return ArrowUp, nil
 		case 's':
-			return arrowDown, nil
+			return ArrowDown, nil
 		case 'd':
-			return arrowRight, nil
+			return ArrowRight, nil
 		case 'a':
-			return arrowLeft, nil
+			return ArrowLeft, nil
 		case '\r', '\n':
-			return enter, nil
+			return Enter, nil
 		case '\x1b':
-			return cancel, nil
+			return Cancel, nil
 		}
 	}
 
@@ -159,36 +159,36 @@ func (t *terminal) ReadArrow() (int, error) {
 		case '[':
 			switch buf[2] {
 			case 'A':
-				return arrowUp, nil
+				return ArrowUp, nil
 			case 'B':
-				return arrowDown, nil
+				return ArrowDown, nil
 			case 'C':
-				return arrowRight, nil
+				return ArrowRight, nil
 			case 'D':
-				return arrowLeft, nil
+				return ArrowLeft, nil
 			}
 		case 'O':
 			switch buf[2] {
 			case 'A':
-				return arrowUp, nil
+				return ArrowUp, nil
 			case 'B':
-				return arrowDown, nil
+				return ArrowDown, nil
 			case 'C':
-				return arrowRight, nil
+				return ArrowRight, nil
 			case 'D':
-				return arrowLeft, nil
+				return ArrowLeft, nil
 			}
 		}
 	}
 
 	if num == 2 && buf[0] == '\x1b' && buf[1] == '\r' {
-		return enter, nil
+		return Enter, nil
 	}
 
-	return invalidInput, nil
+	return InvalidInput, nil
 }
 
-func (t *terminal) HideCursor() {
+func (t *Terminal) HideCursor() {
 	handle := syscall.Handle(os.Stdout.Fd())
 
 	var cci _consoleCursorInfo
@@ -200,7 +200,7 @@ func (t *terminal) HideCursor() {
 	procSetConsoleCursorInfo.Call(uintptr(handle), uintptr(unsafe.Pointer(&cci)))
 }
 
-func (t *terminal) ShowCursor() {
+func (t *Terminal) ShowCursor() {
 	handle := syscall.Handle(os.Stdout.Fd())
 
 	var cci _consoleCursorInfo

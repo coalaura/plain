@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/coalaura/atom"
+	"github.com/coalaura/plain/internal"
 	"golang.org/x/term"
 )
 
@@ -58,7 +59,7 @@ type Theme struct {
 // Plain is a small, allocation-conscious logger with optional ANSI color output
 type Plain struct {
 	out  io.Writer
-	term *terminal
+	term *internal.Terminal
 
 	writeLock sync.Mutex
 	readLock  sync.Mutex
@@ -90,11 +91,11 @@ func New(opts ...option) *Plain {
 		opt(p)
 	}
 
-	fd, ok := getWriterFd(p.out)
+	fd, ok := internal.GetWriterFd(p.out)
 
 	if ok && term.IsTerminal(fd) {
-		p.mode = detectColorLevel(fd)
-		p.color = p.mode > ModeNone
+		p.mode = internal.DetectColorLevel(fd)
+		p.color = p.mode > internal.ModeNone
 
 		p.theme.Dimmed = color(p.mode, "\x1b[90m", c256(244), rgb(145, 145, 145))
 		p.theme.Success = color(p.mode, "\x1b[32m", c256(114), rgb(120, 210, 130))
@@ -103,7 +104,7 @@ func New(opts ...option) *Plain {
 		p.theme.Warn = color(p.mode, "\x1b[33m", c256(215), rgb(255, 190, 80))
 		p.theme.Error = color(p.mode, "\x1b[31m", c256(210), rgb(255, 110, 110))
 	} else {
-		p.mode = ModeNone
+		p.mode = internal.ModeNone
 	}
 
 	return p
@@ -500,11 +501,11 @@ func (p *Plain) stripANSI(buf []byte) []byte {
 
 func color(mode int, some, bit8, full string) string {
 	switch mode {
-	case ModeSome:
+	case internal.ModeSome:
 		return some
-	case Mode8Bit:
+	case internal.Mode8Bit:
 		return bit8
-	case ModeFull:
+	case internal.ModeFull:
 		return full
 	}
 

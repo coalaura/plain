@@ -10,6 +10,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/coalaura/plain/internal"
 	"golang.org/x/term"
 )
 
@@ -119,7 +120,7 @@ func (p *Plain) ReadHidden(prompt string) (string, error) {
 
 	p.out.Write(buf)
 
-	term, err := openTTY(false)
+	term, err := internal.OpenTTY(false)
 	if err != nil {
 		return "", err
 	}
@@ -129,7 +130,7 @@ func (p *Plain) ReadHidden(prompt string) (string, error) {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
 
-	line, err := readCtx(ctx, p, term, (*terminal).ReadLine)
+	line, err := internal.ReadCtx(ctx, term, (*internal.Terminal).ReadLine)
 	if err != nil {
 		io.WriteString(p.out, "\n")
 
@@ -170,7 +171,7 @@ func (p *Plain) ReadMask(prompt string, mask rune) (string, error) {
 
 	p.out.Write(buf)
 
-	term, err := openTTY(false)
+	term, err := internal.OpenTTY(false)
 	if err != nil {
 		return "", err
 	}
@@ -180,7 +181,7 @@ func (p *Plain) ReadMask(prompt string, mask rune) (string, error) {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
 
-	line, err := readCtx(ctx, p, term, func(t *terminal) ([]byte, error) {
+	line, err := internal.ReadCtx(ctx, term, func(t *internal.Terminal) ([]byte, error) {
 		return t.ReadMasked(p.out, mask)
 	})
 
@@ -219,7 +220,7 @@ func (p *Plain) ReadOne(prompt string, echo bool) (rune, error) {
 
 	defer io.WriteString(p.out, "\n")
 
-	term, err := openTTY(false)
+	term, err := internal.OpenTTY(false)
 	if err != nil {
 		return 0, err
 	}
@@ -229,7 +230,7 @@ func (p *Plain) ReadOne(prompt string, echo bool) (rune, error) {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
 
-	b, err := readCtx(ctx, p, term, (*terminal).ReadKey)
+	b, err := internal.ReadCtx(ctx, term, (*internal.Terminal).ReadKey)
 	if err != nil {
 		return 0, err
 	}
@@ -281,7 +282,7 @@ func (p *Plain) confirm(prompt string, defaultYes, echo bool, prefix string) (bo
 
 	p.out.Write(buf)
 
-	term, err := openTTY(false)
+	term, err := internal.OpenTTY(false)
 	if err != nil {
 		return false, err
 	}
@@ -297,7 +298,7 @@ func (p *Plain) confirm(prompt string, defaultYes, echo bool, prefix string) (bo
 	)
 
 	for !done {
-		b, err := readCtx(ctx, p, term, (*terminal).ReadKey)
+		b, err := internal.ReadCtx(ctx, term, (*internal.Terminal).ReadKey)
 		if err != nil {
 			io.WriteString(p.out, "\n")
 
@@ -391,7 +392,7 @@ func (p *Plain) selectOption(prompt string, optionCount int, showDescription boo
 		pool.Put(bp)
 	}()
 
-	term, err := openTTY(true)
+	term, err := internal.OpenTTY(true)
 	if err != nil {
 		return 0, err
 	}
@@ -401,13 +402,13 @@ func (p *Plain) selectOption(prompt string, optionCount int, showDescription boo
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
 
-	input := make(chan result[int], 1)
+	input := make(chan internal.Result[int], 1)
 
 	go func() {
 		for {
 			value, err := term.ReadArrow()
 
-			readResult := result[int]{value, err}
+			readResult := internal.NewResult(value, err)
 
 			select {
 			case input <- readResult:
@@ -448,30 +449,30 @@ func (p *Plain) selectOption(prompt string, optionCount int, showDescription boo
 			case <-ctx.Done():
 				return 0, ErrInterrupted
 			case readResult := <-input:
-				if readResult.err != nil {
-					return 0, readResult.err
+				if readResult.Err != nil {
+					return 0, readResult.Err
 				}
 
-				switch readResult.val {
-				case arrowRight, arrowDown:
+				switch readResult.Val {
+				case internal.ArrowRight, internal.ArrowDown:
 					index++
 
 					if index >= optionCount {
 						index = 0
 					}
-				case arrowLeft, arrowUp:
+				case internal.ArrowLeft, internal.ArrowUp:
 					index--
 
 					if index < 0 {
 						index = optionCount - 1
 					}
-				case enter:
+				case internal.Enter:
 					if !showDescription {
 						p.out.Write([]byte("\n"))
 					}
 
 					return index, nil
-				case cancel:
+				case internal.Cancel:
 					return 0, ErrInterrupted
 				}
 
