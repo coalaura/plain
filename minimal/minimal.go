@@ -37,6 +37,7 @@ var pool = sync.Pool{
 	},
 }
 
+// NewMinimal creates a Minimal logger configured by the provided options
 func NewMinimal(opts ...option) *Minimal {
 	m := &Minimal{
 		out: os.Stdout,
@@ -61,11 +62,13 @@ func (m *Minimal) writeArgs(code, prefix string, a ...any) {
 	buf := *bp
 	buf = buf[:0]
 
-	if m.color {
+	if m.color && code != "" {
 		buf = append(buf, code...)
 	}
 
-	buf = append(buf, prefix...)
+	if prefix != "" {
+		buf = append(buf, prefix...)
+	}
 
 	if len(a) > 0 {
 		buf = fmt.Append(buf, a...)
@@ -96,11 +99,13 @@ func (m *Minimal) writeArgsLine(code, prefix string, a ...any) {
 	buf := *bp
 	buf = buf[:0]
 
-	if m.color {
+	if m.color && code != "" {
 		buf = append(buf, code...)
 	}
 
-	buf = append(buf, prefix...)
+	if prefix != "" {
+		buf = append(buf, prefix...)
+	}
 
 	if len(a) > 0 {
 		buf = fmt.Append(buf, a...)
@@ -135,11 +140,13 @@ func (m *Minimal) writeFormat(code, prefix string, format string, a ...any) {
 	buf := *bp
 	buf = buf[:0]
 
-	if m.color {
+	if m.color && code != "" {
 		buf = append(buf, code...)
 	}
 
-	buf = append(buf, prefix...)
+	if prefix != "" {
+		buf = append(buf, prefix...)
+	}
 
 	if len(a) == 0 {
 		buf = append(buf, format...)
