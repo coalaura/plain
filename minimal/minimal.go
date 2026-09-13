@@ -70,7 +70,7 @@ func New(opts ...option) *Minimal {
 	return m
 }
 
-func (m *Minimal) writeArgs(errorOutput bool, code, prefix string, a ...any) error {
+func (m *Minimal) writeArgs(errorOutput, colorMessage bool, code, prefix string, a ...any) error {
 	out, colored := m.target(errorOutput)
 
 	bp := pool.Get().(*[]byte)
@@ -78,13 +78,13 @@ func (m *Minimal) writeArgs(errorOutput bool, code, prefix string, a ...any) err
 	buf := *bp
 	buf = buf[:0]
 
-	buf = appendPrefix(buf, colored, code, prefix)
+	buf = appendPrefix(buf, colored, colorMessage, code, prefix)
 
 	if len(a) > 0 {
 		buf = fmt.Append(buf, a...)
 	}
 
-	buf = finishMessage(buf, colored, code, prefix)
+	buf = finishMessage(buf, colored, colorMessage, code, prefix)
 	buf = stripColor(buf, colored)
 
 	err := m.write(out, buf)
@@ -94,7 +94,7 @@ func (m *Minimal) writeArgs(errorOutput bool, code, prefix string, a ...any) err
 	return err
 }
 
-func (m *Minimal) writeArgsLine(errorOutput bool, code, prefix string, a ...any) error {
+func (m *Minimal) writeArgsLine(errorOutput, colorMessage bool, code, prefix string, a ...any) error {
 	out, colored := m.target(errorOutput)
 
 	bp := pool.Get().(*[]byte)
@@ -102,13 +102,13 @@ func (m *Minimal) writeArgsLine(errorOutput bool, code, prefix string, a ...any)
 	buf := *bp
 	buf = buf[:0]
 
-	buf = appendPrefix(buf, colored, code, prefix)
+	buf = appendPrefix(buf, colored, colorMessage, code, prefix)
 
 	if len(a) > 0 {
 		buf = fmt.Append(buf, a...)
 	}
 
-	buf = finishMessage(buf, colored, code, prefix)
+	buf = finishMessage(buf, colored, colorMessage, code, prefix)
 	buf = append(buf, '\n')
 	buf = stripColor(buf, colored)
 
@@ -119,7 +119,7 @@ func (m *Minimal) writeArgsLine(errorOutput bool, code, prefix string, a ...any)
 	return err
 }
 
-func (m *Minimal) writeFormat(errorOutput bool, code, prefix, format string, a ...any) error {
+func (m *Minimal) writeFormat(errorOutput, colorMessage bool, code, prefix, format string, a ...any) error {
 	out, colored := m.target(errorOutput)
 
 	bp := pool.Get().(*[]byte)
@@ -127,7 +127,7 @@ func (m *Minimal) writeFormat(errorOutput bool, code, prefix, format string, a .
 	buf := *bp
 	buf = buf[:0]
 
-	buf = appendPrefix(buf, colored, code, prefix)
+	buf = appendPrefix(buf, colored, colorMessage, code, prefix)
 
 	if len(a) == 0 {
 		buf = append(buf, format...)
@@ -135,7 +135,7 @@ func (m *Minimal) writeFormat(errorOutput bool, code, prefix, format string, a .
 		buf = fmt.Appendf(buf, format, a...)
 	}
 
-	buf = finishMessage(buf, colored, code, prefix)
+	buf = finishMessage(buf, colored, colorMessage, code, prefix)
 	buf = stripColor(buf, colored)
 
 	err := m.write(out, buf)
@@ -165,22 +165,22 @@ func (m *Minimal) write(out io.Writer, buf []byte) error {
 	return err
 }
 
-func appendPrefix(dst []byte, colored bool, code, prefix string) []byte {
+func appendPrefix(dst []byte, colored, colorMessage bool, code, prefix string) []byte {
 	if colored && code != "" {
 		dst = append(dst, code...)
 	}
 
 	dst = append(dst, prefix...)
 
-	if colored && code != "" && prefix != "" {
+	if colored && code != "" && prefix != "" && !colorMessage {
 		dst = append(dst, AnsiReset...)
 	}
 
 	return dst
 }
 
-func finishMessage(dst []byte, colored bool, code, prefix string) []byte {
-	if colored && code != "" && prefix == "" {
+func finishMessage(dst []byte, colored, colorMessage bool, code, prefix string) []byte {
+	if colored && code != "" && (prefix == "" || colorMessage) {
 		return append(dst, AnsiReset...)
 	}
 
