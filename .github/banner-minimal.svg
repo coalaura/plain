@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="260" viewBox="0 0 1200 260" role="img" aria-labelledby="title description">
+  <title id="title">minimal</title>
+  <desc id="description">A folded paper ribbon forms the first m in minimal. Its faces carry the logger's distinct status markers: ::, ?? and !!.</desc>
+  <style>
+    .ink { fill: #edf2ec; }
+    .success-paper { fill: #a8e6cf; }
+    .crease { fill: #357b62; }
+    .warning-paper { fill: #e8c68d; }
+    .error-paper { fill: #e0a295; }
+    .success-print { fill: #204f3f; }
+    .warning-print { fill: #5c441b; }
+    .error-print { fill: #5e302a; }
+  </style>
+  <defs>
+    <path id="letter-i" d="M0 0 H32 V28 H0 Z M0 42 H32 V160 H0 Z"/>
+    <path id="question" d="M0 5 C0 2 2 0 6 0 C10 0 12 2 12 5 C12 8 10 9 8 10 L8 14 H4 V9 C4 7 8 7 8 5 C8 4 7 3 6 3 C5 3 4 4 4 5 Z M4 18 H8 V22 H4 Z"/>
+  </defs>
+
+  <g id="wordmark" transform="translate(139.5 49)">
+    <!-- One continuous strip, folded into an m: the same paper as Plain,
+         reduced to the package's actual success, warning, and error signals. -->
+    <g id="folded-m">
+      <path class="success-paper" d="M0 160 L52 42 H88 L36 160 Z"/>
+      <path class="crease" d="M52 42 H88 L139 160 H103 Z"/>
+      <path class="warning-paper" d="M103 160 H139 L190 42 H154 Z"/>
+      <path class="error-paper" d="M154 42 H190 L242 160 H206 Z"/>
+
+      <!-- The print follows each paper face, rather than floating above it. -->
+      <g class="success-print" transform="matrix(1 0 -0.44068 1 70.508 0)">
+        <path d="M7 92 H13 V98 H7 Z M7 106 H13 V112 H7 Z M23 92 H29 V98 H23 Z M23 106 H29 V112 H23 Z"/>
+      </g>
+      <g class="warning-print" transform="matrix(1 0 -0.4322 1 172.153 0)">
+        <use href="#question" x="4" y="92"/>
+        <use href="#question" x="20" y="92"/>
+      </g>
+      <g class="error-print" transform="matrix(1 0 0.44068 1 135.492 0)">
+        <path d="M7 90 H13 V105 H7 Z M7 110 H13 V116 H7 Z M23 90 H29 V105 H23 Z M23 110 H29 V116 H23 Z"/>
+      </g>
+    </g>
+
+    <!-- Upright custom outlines share Plain's letterforms without a font dependency. -->
+    <g class="ink" fill-rule="evenodd">
+      <use href="#letter-i" x="268"/>
+      <!-- n -->
+      <path transform="translate(326)" d="M0 42 H31 V57 C41 44 55 38 72 38 C102 38 119 59 119 91 V160 H87 V96 C87 76 78 66 62 66 C43 66 32 79 32 99 V160 H0 Z"/>
+      <use href="#letter-i" x="471"/>
+      <!-- m -->
+      <path transform="translate(529)" d="M0 42 H30 V56 C39 44 50 38 64 38 C82 38 94 46 101 59 C111 45 125 38 141 38 C168 38 184 57 184 87 V160 H153 V93 C153 75 146 66 134 66 C118 66 109 78 109 96 V160 H78 V93 C78 75 71 66 59 66 C42 66 31 79 31 98 V160 H0 Z"/>
+      <!-- a -->
+      <path transform="translate(739)" d="M56 38 C74 38 86 45 94 57 V42 H124 V160 H94 V145 C85 158 72 162 55 162 C22 162 0 137 0 100 C0 64 22 38 56 38 Z M32 100 C32 122 43 135 63 135 C82 135 94 122 94 100 C94 78 82 65 63 65 C43 65 32 78 32 100 Z"/>
+      <!-- l -->
+      <path d="M889 0 H921 V160 H889 Z"/>
+    </g>
+  </g>
+</svg>

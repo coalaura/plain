@@ -1,4 +1,8 @@
-# minimal
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../.github/banner-minimal.svg">
+  <source media="(prefers-color-scheme: light)" srcset="../.github/banner-minimal-light.svg">
+  <img alt="minimal — a small CLI logger. A folded-paper m carries its ::, ?? and !! status markers." src="../.github/banner-minimal-light.svg">
+</picture>
 
 `minimal` is a small CLI-focused logger with distinct status markers, automatic terminal color detection and separate standard and error output streams.
 
