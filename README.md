@@ -1,3 +1,9 @@
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset=".github/banner.svg">
+  <source media="(prefers-color-scheme: light)" srcset=".github/banner-light.svg">
+  <img alt="plain — low-overhead, zero-allocation logging for Go" src=".github/banner-light.svg">
+</picture>
+
 # plain
 
 A tiny, super fast logger for Go with a couple of handy input helpers.

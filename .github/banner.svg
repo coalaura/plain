@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="256" viewBox="0 0 1120 256" fill="none" role="img" aria-labelledby="title description">
+  <title id="title">plain — low-overhead logging for Go</title>
+  <desc id="description">The plain wordmark with zero-allocation benchmark figures beside sample log output and an optional input prompt.</desc>
+  <style>
+    /* Keep layout identical in both banners; only these theme colors differ. */
+    .text { fill: #e6edf3; }
+    .muted { fill: #9ba9b8; }
+    .blue { fill: #64b4ff; }
+    .teal { fill: #82dcdc; }
+    .green { fill: #78d282; }
+    .amber { fill: #ffbe50; }
+    .red { fill: #ff6e6e; }
+    .rule { stroke: #3d4c5c; }
+    .accent { stroke: #82dcdc; }
+    .success { stroke: #78d282; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace; }
+    .sans { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+  </style>
+
+  <!-- Wordmark and a small ANSI-inspired palette. No background fill. -->
+  <g class="sans">
+    <text x="40" y="43" class="muted mono" font-size="11" letter-spacing="1.5">go / logging</text>
+    <text x="36" y="121" class="text" font-size="88" font-weight="650" letter-spacing="-4">plain</text>
+    <path d="m263 101 9 9-9 9m20 0h15" class="accent" stroke-width="3"/>
+    <text x="40" y="180" class="text" font-size="18">Low-overhead logging for Go.</text>
+    <text x="40" y="207" class="muted mono" font-size="14">0 B/op · 0 allocs/op</text>
+  </g>
+  <g transform="translate(40 221)">
+    <path d="M0 0h32v3H0z" class="blue"/>
+    <path d="M38 0h32v3H38z" class="teal"/>
+    <path d="M76 0h32v3H76z" class="green"/>
+    <path d="M114 0h32v3h-32z" class="amber"/>
+    <path d="M152 0h32v3h-32z" class="red"/>
+  </g>
+
+  <!-- Transparent terminal: a code hint, sample output, and a live prompt. -->
+  <g class="mono" font-size="16">
+    <rect x="446.5" y="28.5" width="633" height="199" rx="2" class="rule"/>
+    <path d="M447 67.5h632M561.5 84v96" class="rule"/>
+    <path d="m467 43 6 6-6 6m14 0h8" class="accent" stroke-width="1.5"/>
+    <text x="505" y="54" class="text" font-size="14">pl := <tspan class="blue">plain.New()</tspan></text>
+    <text x="1058" y="53" class="muted" text-anchor="end" font-size="11" letter-spacing="1.5">stdout</text>
+
+    <g class="muted" font-size="13">
+      <text x="468" y="101">09:41:00</text>
+      <text x="468" y="133">09:41:01</text>
+      <text x="468" y="165">09:41:02</text>
+    </g>
+    <text x="581" y="101" class="text">listening on :8080</text>
+    <text x="581" y="133" class="amber">retrying in 1s</text>
+    <text x="581" y="165" class="blue">GET /health 200</text>
+
+    <path d="M447 187.5h632" class="rule"/>
+    <path d="m469 201 6 6-6 6" class="accent" stroke-width="1.5"/>
+    <text x="493" y="212" class="teal">Continue? <tspan class="muted">[Y/n]</tspan> <tspan class="green">y</tspan></text>
+    <path d="M670 215h9" class="accent" stroke-width="2"/>
+    <path d="m1036 207 5 5 10-11" class="success" stroke-width="1.5"/>
+  </g>
+</svg>
