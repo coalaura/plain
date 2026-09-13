@@ -1,59 +1,56 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="256" viewBox="0 0 1120 256" fill="none" role="img" aria-labelledby="title description">
-  <title id="title">plain — low-overhead logging for Go</title>
-  <desc id="description">The plain wordmark with zero-allocation benchmark figures beside sample log output and an optional input prompt.</desc>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="360" viewBox="0 0 1200 360" role="img" aria-labelledby="title description">
+  <title id="title">plain — Fast Go logs. Zero allocations.</title>
+  <desc id="description">A paper plane folded from colored log lines takes flight as the dot of the i in plain.</desc>
   <style>
-    /* Keep layout identical in both banners; only these theme colors differ. */
-    .text { fill: #1f2937; }
-    .muted { fill: #596777; }
-    .blue { fill: #0969b8; }
-    .teal { fill: #087878; }
-    .green { fill: #247538; }
-    .amber { fill: #966000; }
-    .red { fill: #c43838; }
-    .rule { stroke: #bcc7d1; }
-    .accent { stroke: #087878; }
-    .success { stroke: #247538; }
-    .mono { font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace; }
-    .sans { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    .ink { fill: #243c31; }
+    .caption { fill: #52695d; }
+    .wake { fill: #839b8e; }
+    .paper { fill: #28795c; }
+    .fold { fill: #4a9977; }
+    .keel { fill: #194e3c; }
+    .print { stroke: #e5f5e9; }
+    .warn { stroke: #ffe2a0; }
+    .error { stroke: #ffc5ad; }
   </style>
 
-  <!-- Wordmark and a small ANSI-inspired palette. No background fill. -->
-  <g class="sans">
-    <text x="40" y="43" class="muted mono" font-size="11" letter-spacing="1.5">go / logging</text>
-    <text x="36" y="121" class="text" font-size="88" font-weight="650" letter-spacing="-4">plain</text>
-    <path d="m263 101 9 9-9 9m20 0h15" class="accent" stroke-width="3"/>
-    <text x="40" y="180" class="text" font-size="18">Low-overhead logging for Go.</text>
-    <text x="40" y="207" class="muted mono" font-size="14">0 B/op · 0 allocs/op</text>
-  </g>
-  <g transform="translate(40 221)">
-    <path d="M0 0h32v3H0z" class="blue"/>
-    <path d="M38 0h32v3H38z" class="teal"/>
-    <path d="M76 0h32v3H76z" class="green"/>
-    <path d="M114 0h32v3h-32z" class="amber"/>
-    <path d="M152 0h32v3h-32z" class="red"/>
+  <!-- The log stream becomes a slipstream: three tapered, unboxed lines. -->
+  <g id="slipstream" class="wake">
+    <path d="M220 68 H340 V72 H220 Z M352 68 H550 L536 72 H352 Z"/>
+    <path d="M171 89 H260 V93 H171 Z M272 89 H606 L586 93 H272 Z"/>
+    <path d="M302 110 H373 V114 H302 Z M385 110 H438 L426 114 H385 Z"/>
   </g>
 
-  <!-- Transparent terminal: a code hint, sample output, and a live prompt. -->
-  <g class="mono" font-size="16">
-    <rect x="446.5" y="28.5" width="633" height="199" rx="2" class="rule"/>
-    <path d="M447 67.5h632M561.5 84v96" class="rule"/>
-    <path d="m467 43 6 6-6 6m14 0h8" class="accent" stroke-width="1.5"/>
-    <text x="505" y="54" class="text" font-size="14">pl := <tspan class="blue">plain.New()</tspan></text>
-    <text x="1058" y="53" class="muted" text-anchor="end" font-size="11" letter-spacing="1.5">stdout</text>
+  <!-- Custom lowercase outlines keep the main lettering independent of fonts.
+       The plane replaces the i's dot; the forward lean shares its direction. -->
+  <g id="wordmark" class="ink" fill-rule="evenodd" transform="translate(324 100) skewX(-9)">
+    <!-- p -->
+    <path d="M0 42 H30 V56 C39 44 52 38 68 38 C101 38 124 63 124 100 C124 137 101 162 68 162 C52 162 39 157 30 146 V204 H0 Z
+             M30 100 C30 122 42 135 61 135 C80 135 92 122 92 100 C92 78 80 65 61 65 C42 65 30 78 30 100 Z"/>
+    <!-- l -->
+    <path d="M148 0 H180 V160 H148 Z"/>
+    <!-- a -->
+    <path d="M263 38 C281 38 293 45 301 57 V42 H331 V160 H301 V145 C292 158 279 162 262 162 C229 162 207 137 207 100 C207 64 229 38 263 38 Z
+             M239 100 C239 122 250 135 270 135 C289 135 301 122 301 100 C301 78 289 65 270 65 C250 65 239 78 239 100 Z"/>
+    <!-- i, with its airborne dot above -->
+    <path d="M359 42 H391 V160 H359 Z"/>
+    <!-- n -->
+    <path d="M421 42 H452 V57 C462 44 476 38 493 38 C523 38 540 59 540 91 V160 H508 V96 C508 76 499 66 483 66 C464 66 453 79 453 99 V160 H421 Z"/>
+  </g>
 
-    <g class="muted" font-size="13">
-      <text x="468" y="101">09:41:00</text>
-      <text x="468" y="133">09:41:01</text>
-      <text x="468" y="165">09:41:02</text>
+  <g id="paper-plane">
+    <path class="paper" d="M584 60 L944 26 L670 88 Z"/>
+    <path class="keel" d="M670 88 L944 26 L686 120 Z"/>
+    <path class="fold" d="M696 97 L944 26 L686 120 Z"/>
+
+    <!-- Print, warning, and error lines are printed on the upper wing. -->
+    <g id="printed-log-lines" fill="none" stroke-width="4">
+      <path class="print" d="M618 61 L638 59 M646 58 L724 51"/>
+      <path class="warn" d="M638 69 L654 67"/>
+      <path class="print" d="M662 66 L710 61"/>
+      <path class="error" d="M659 77 L672 76"/>
+      <path class="print" d="M680 75 L707 72"/>
     </g>
-    <text x="581" y="101" class="text">listening on :8080</text>
-    <text x="581" y="133" class="amber">retrying in 1s</text>
-    <text x="581" y="165" class="blue">GET /health 200</text>
-
-    <path d="M447 187.5h632" class="rule"/>
-    <path d="m469 201 6 6-6 6" class="accent" stroke-width="1.5"/>
-    <text x="493" y="212" class="teal">Continue? <tspan class="muted">[Y/n]</tspan> <tspan class="green">y</tspan></text>
-    <path d="M670 215h9" class="accent" stroke-width="2"/>
-    <path d="m1036 207 5 5 10-11" class="success" stroke-width="1.5"/>
   </g>
+
+  <text class="caption" x="600" y="326" text-anchor="middle" font-family="ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="30" font-weight="450" letter-spacing="0.2">Fast Go logs. Zero allocations.</text>
 </svg>
