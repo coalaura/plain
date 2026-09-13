@@ -2,12 +2,14 @@ package plain
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"os"
 	"os/signal"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/coalaura/atom"
@@ -50,20 +52,28 @@ type Theme struct {
 	Error  string
 }
 
+type outputState struct {
+	out   io.Writer
+	color bool
+	theme Theme
+}
+
+type outputWriter struct {
+	plain  *Plain
+	target io.Writer
+}
+
 // Plain is a small, allocation-conscious logger with optional ANSI color output
 type Plain struct {
-	out  io.Writer
-	term *internal.Terminal
+	out io.Writer
 
 	writeLock sync.Mutex
 	readLock  sync.Mutex
 
-	color bool
-	mode  int
+	output atomic.Pointer[outputState]
 
 	level  atom.Value[Level]
 	format atom.Value[string]
-	theme  Theme
 
 	readBuf []byte
 }
@@ -73,6 +83,10 @@ var pool = sync.Pool{
 		b := make([]byte, 0, 512)
 		return &b
 	},
+}
+
+func (w outputWriter) Write(buf []byte) (int, error) {
+	return w.plain.writeOutput(w.target, buf)
 }
 
 // New creates a Plain logger configured by the provided options
@@ -85,43 +99,31 @@ func New(opts ...option) *Plain {
 		opt(p)
 	}
 
-	fd, ok := internal.GetWriterFd(p.out)
-
-	if ok && term.IsTerminal(fd) {
-		p.mode = internal.DetectColorLevel(fd)
-		p.color = p.mode > internal.ModeNone
-
-		p.theme.Dimmed = color(p.mode, "\x1b[90m", c256(244), rgb(145, 145, 145))
-		p.theme.Success = color(p.mode, "\x1b[32m", c256(114), rgb(120, 210, 130))
-		p.theme.Highlight = color(p.mode, "\x1b[94m", c256(111), rgb(100, 180, 255))
-		p.theme.Input = color(p.mode, "\x1b[36m", c256(152), rgb(130, 220, 220))
-		p.theme.Warn = color(p.mode, "\x1b[33m", c256(215), rgb(255, 190, 80))
-		p.theme.Error = color(p.mode, "\x1b[31m", c256(210), rgb(255, 110, 110))
-	} else {
-		p.mode = internal.ModeNone
-	}
+	p.setTarget(p.out)
 
 	return p
 }
 
 // Theme returns a theme color as ansi code
 func (p *Plain) Theme(c themeColor) string {
+	state := p.outputState()
+
 	switch c {
 	case Dimmed:
-		return p.theme.Dimmed
+		return state.theme.Dimmed
 	case Success:
-		return p.theme.Success
+		return state.theme.Success
 	case Highlight:
-		return p.theme.Highlight
+		return state.theme.Highlight
 	case Input:
-		return p.theme.Input
+		return state.theme.Input
 	case Warn:
-		return p.theme.Warn
+		return state.theme.Warn
 	case Error:
-		return p.theme.Error
+		return state.theme.Error
 	}
 
-	if !p.color {
+	if !state.color {
 		return ""
 	}
 
@@ -136,13 +138,25 @@ func (p *Plain) WaitForInterrupt() {
 // OnSignal registers a non-blocking handler that executes the provided callback
 // every time the specified signal is received.
 func (p *Plain) OnSignal(sig os.Signal, handler func()) {
+	p.OnSignalContext(context.Background(), sig, handler)
+}
+
+// OnSignalContext registers a non-blocking handler until ctx is cancelled.
+func (p *Plain) OnSignalContext(ctx context.Context, sig os.Signal, handler func()) {
 	ch := make(chan os.Signal, 1)
 
 	signal.Notify(ch, sig)
 
 	go func() {
-		for range ch {
-			handler()
+		defer signal.Stop(ch)
+
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ch:
+				handler()
+			}
 		}
 	}()
 }
@@ -164,8 +178,10 @@ func (p *Plain) Writeln(code, msg string, reset, noHeader bool) {
 }
 
 func (p *Plain) writeString(code, msg string, reset, noHeader bool) {
-	if !p.color && p.format.Load() == "" && strings.IndexByte(msg, '\x1b') == -1 {
-		if sw, ok := p.out.(io.StringWriter); ok {
+	state := p.outputState()
+
+	if !state.color && p.format.Load() == "" && strings.IndexByte(msg, '\x1b') == -1 {
+		if sw, ok := state.out.(io.StringWriter); ok {
 			p.writeLock.Lock()
 			sw.WriteString(msg)
 			p.writeLock.Unlock()
@@ -182,22 +198,20 @@ func (p *Plain) writeString(code, msg string, reset, noHeader bool) {
 	if noHeader {
 		buf = append(buf, code...)
 	} else {
-		buf = p.appendHeader(buf, code)
+		buf = p.appendHeader(buf, code, state.color, state.theme)
 	}
 
 	buf = append(buf, msg...)
 
-	if p.color && reset {
+	if state.color && reset {
 		buf = append(buf, internal.AnsiReset...)
 	}
 
-	if !p.color && bytes.IndexByte(buf, '\x1b') >= 0 {
+	if !state.color && bytes.IndexByte(buf, '\x1b') >= 0 {
 		buf = internal.StripANSI(buf)
 	}
 
-	p.writeLock.Lock()
-	p.out.Write(buf)
-	p.writeLock.Unlock()
+	p.writeBytes(state.out, buf)
 
 	if cap(buf) < 4096 {
 		*bp = buf
@@ -207,8 +221,10 @@ func (p *Plain) writeString(code, msg string, reset, noHeader bool) {
 }
 
 func (p *Plain) writeLine(code, msg string, reset, noHeader bool) {
-	if !p.color && p.format.Load() == "" && strings.IndexByte(msg, '\x1b') == -1 {
-		if sw, ok := p.out.(io.StringWriter); ok {
+	state := p.outputState()
+
+	if !state.color && p.format.Load() == "" && strings.IndexByte(msg, '\x1b') == -1 {
+		if sw, ok := state.out.(io.StringWriter); ok {
 			p.writeLock.Lock()
 			sw.WriteString(msg)
 			sw.WriteString("\n")
@@ -226,24 +242,22 @@ func (p *Plain) writeLine(code, msg string, reset, noHeader bool) {
 	if noHeader {
 		buf = append(buf, code...)
 	} else {
-		buf = p.appendHeader(buf, code)
+		buf = p.appendHeader(buf, code, state.color, state.theme)
 	}
 
 	buf = append(buf, msg...)
 
-	if p.color && reset {
+	if state.color && reset {
 		buf = append(buf, internal.AnsiReset...)
 	}
 
 	buf = append(buf, '\n')
 
-	if !p.color && bytes.IndexByte(buf, '\x1b') >= 0 {
+	if !state.color && bytes.IndexByte(buf, '\x1b') >= 0 {
 		buf = internal.StripANSI(buf)
 	}
 
-	p.writeLock.Lock()
-	p.out.Write(buf)
-	p.writeLock.Unlock()
+	p.writeBytes(state.out, buf)
 
 	if cap(buf) > 4096 {
 		return
@@ -261,28 +275,28 @@ func (p *Plain) writeArgs(code string, reset, nl bool, a ...any) {
 		return
 	}
 
+	state := p.outputState()
+
 	bp := pool.Get().(*[]byte)
 
 	buf := *bp
 	buf = buf[:0]
 
-	buf = p.appendHeader(buf, code)
+	buf = p.appendHeader(buf, code, state.color, state.theme)
 
 	if len(a) > 0 {
 		buf = fmt.Append(buf, a...)
 	}
 
-	if p.color && reset {
+	if state.color && reset {
 		buf = append(buf, internal.AnsiReset...)
 	}
 
-	if !p.color && bytes.IndexByte(buf, '\x1b') >= 0 {
+	if !state.color && bytes.IndexByte(buf, '\x1b') >= 0 {
 		buf = internal.StripANSI(buf)
 	}
 
-	p.writeLock.Lock()
-	p.out.Write(buf)
-	p.writeLock.Unlock()
+	p.writeBytes(state.out, buf)
 
 	if cap(buf) < 4096 {
 		*bp = buf
@@ -292,30 +306,30 @@ func (p *Plain) writeArgs(code string, reset, nl bool, a ...any) {
 }
 
 func (p *Plain) writeArgsLine(code string, reset bool, a ...any) {
+	state := p.outputState()
+
 	bp := pool.Get().(*[]byte)
 
 	buf := *bp
 	buf = buf[:0]
 
-	buf = p.appendHeader(buf, code)
+	buf = p.appendHeader(buf, code, state.color, state.theme)
 
 	if len(a) > 0 {
 		buf = fmt.Append(buf, a...)
 	}
 
-	if p.color && reset {
+	if state.color && reset {
 		buf = append(buf, internal.AnsiReset...)
 	}
 
 	buf = append(buf, '\n')
 
-	if !p.color && bytes.IndexByte(buf, '\x1b') >= 0 {
+	if !state.color && bytes.IndexByte(buf, '\x1b') >= 0 {
 		buf = internal.StripANSI(buf)
 	}
 
-	p.writeLock.Lock()
-	p.out.Write(buf)
-	p.writeLock.Unlock()
+	p.writeBytes(state.out, buf)
 
 	if cap(buf) > 4096 {
 		return
@@ -333,12 +347,14 @@ func (p *Plain) writeFormat(code string, reset, nl bool, format string, a ...any
 		return
 	}
 
+	state := p.outputState()
+
 	bp := pool.Get().(*[]byte)
 
 	buf := *bp
 	buf = buf[:0]
 
-	buf = p.appendHeader(buf, code)
+	buf = p.appendHeader(buf, code, state.color, state.theme)
 
 	if len(a) == 0 {
 		buf = append(buf, format...)
@@ -346,17 +362,15 @@ func (p *Plain) writeFormat(code string, reset, nl bool, format string, a ...any
 		buf = fmt.Appendf(buf, format, a...)
 	}
 
-	if p.color && reset {
+	if state.color && reset {
 		buf = append(buf, internal.AnsiReset...)
 	}
 
-	if !p.color && bytes.IndexByte(buf, '\x1b') >= 0 {
+	if !state.color && bytes.IndexByte(buf, '\x1b') >= 0 {
 		buf = internal.StripANSI(buf)
 	}
 
-	p.writeLock.Lock()
-	p.out.Write(buf)
-	p.writeLock.Unlock()
+	p.writeBytes(state.out, buf)
 
 	if cap(buf) < 4096 {
 		*bp = buf
@@ -366,12 +380,14 @@ func (p *Plain) writeFormat(code string, reset, nl bool, format string, a ...any
 }
 
 func (p *Plain) writeFormatLine(code string, reset bool, format string, a ...any) {
+	state := p.outputState()
+
 	bp := pool.Get().(*[]byte)
 
 	buf := *bp
 	buf = buf[:0]
 
-	buf = p.appendHeader(buf, code)
+	buf = p.appendHeader(buf, code, state.color, state.theme)
 
 	if len(a) == 0 {
 		buf = append(buf, format...)
@@ -379,19 +395,17 @@ func (p *Plain) writeFormatLine(code string, reset bool, format string, a ...any
 		buf = fmt.Appendf(buf, format, a...)
 	}
 
-	if p.color && reset {
+	if state.color && reset {
 		buf = append(buf, internal.AnsiReset...)
 	}
 
 	buf = append(buf, '\n')
 
-	if !p.color && bytes.IndexByte(buf, '\x1b') >= 0 {
+	if !state.color && bytes.IndexByte(buf, '\x1b') >= 0 {
 		buf = internal.StripANSI(buf)
 	}
 
-	p.writeLock.Lock()
-	p.out.Write(buf)
-	p.writeLock.Unlock()
+	p.writeBytes(state.out, buf)
 
 	if cap(buf) > 4096 {
 		return
@@ -402,24 +416,24 @@ func (p *Plain) writeFormatLine(code string, reset bool, format string, a ...any
 	pool.Put(bp)
 }
 
-func (p *Plain) appendHeader(dst []byte, code string) []byte {
+func (p *Plain) appendHeader(dst []byte, code string, colored bool, theme Theme) []byte {
 	format := p.format.Load()
 
 	if format == "" {
-		if p.color {
+		if colored {
 			dst = append(dst, code...)
 		}
 
 		return dst
 	}
 
-	if p.color {
-		dst = append(dst, p.theme.Dimmed...)
+	if colored {
+		dst = append(dst, theme.Dimmed...)
 	}
 
 	dst = time.Now().AppendFormat(dst, format)
 
-	if p.color {
+	if colored {
 		if code != "" {
 			dst = append(dst, code...)
 		} else {
@@ -430,6 +444,55 @@ func (p *Plain) appendHeader(dst []byte, code string) []byte {
 	dst = append(dst, ' ')
 
 	return dst
+}
+
+func (p *Plain) setTarget(out io.Writer) {
+	color, _, theme := detectWriterTheme(out)
+
+	p.output.Store(&outputState{
+		out:   out,
+		color: color,
+		theme: theme,
+	})
+}
+
+func (p *Plain) outputState() outputState {
+	return *p.output.Load()
+}
+
+func (p *Plain) writeBytes(out io.Writer, buf []byte) {
+	_, _ = p.writeOutput(out, buf)
+}
+
+func (p *Plain) writeOutput(out io.Writer, buf []byte) (int, error) {
+	p.writeLock.Lock()
+	n, err := out.Write(buf)
+	p.writeLock.Unlock()
+
+	return n, err
+}
+
+func detectWriterTheme(out io.Writer) (bool, int, Theme) {
+	fd, ok := internal.GetWriterFd(out)
+	if !ok || !term.IsTerminal(fd) {
+		return false, internal.ModeNone, Theme{}
+	}
+
+	mode := internal.DetectColorLevel(fd)
+	if mode == internal.ModeNone {
+		return false, mode, Theme{}
+	}
+
+	theme := Theme{
+		Dimmed:    color(mode, "\x1b[90m", c256(244), rgb(145, 145, 145)),
+		Success:   color(mode, "\x1b[32m", c256(114), rgb(120, 210, 130)),
+		Highlight: color(mode, "\x1b[94m", c256(111), rgb(100, 180, 255)),
+		Input:     color(mode, "\x1b[36m", c256(152), rgb(130, 220, 220)),
+		Warn:      color(mode, "\x1b[33m", c256(215), rgb(255, 190, 80)),
+		Error:     color(mode, "\x1b[31m", c256(210), rgb(255, 110, 110)),
+	}
+
+	return true, mode, theme
 }
 
 func color(mode int, some, bit8, full string) string {

@@ -25,21 +25,23 @@ func (p *Plain) Middleware() func(http.Handler) http.Handler {
 
 // LogRequest writes a single formatted access log line for request using the provided metrics
 func (p *Plain) LogRequest(request *http.Request, metrics *httpsnoop.Metrics) {
+	state := p.outputState()
+
 	bp := pool.Get().(*[]byte)
 
 	buf := *bp
 	buf = buf[:0]
 
-	buf = p.appendHeader(buf, internal.AnsiReset)
+	buf = p.appendHeader(buf, internal.AnsiReset, state.color, state.theme)
 
-	if p.color {
-		buf = append(buf, p.theme.Highlight...)
+	if state.color {
+		buf = append(buf, state.theme.Highlight...)
 	}
 
 	method := request.Method
 	buf = append(buf, method...)
 
-	if p.color {
+	if state.color {
 		buf = append(buf, internal.AnsiReset...)
 	}
 
@@ -61,16 +63,16 @@ func (p *Plain) LogRequest(request *http.Request, metrics *httpsnoop.Metrics) {
 
 	status := metrics.Code
 
-	if p.color {
+	if state.color {
 		switch {
 		case status >= 200 && status <= 299:
-			buf = append(buf, p.theme.Success...)
+			buf = append(buf, state.theme.Success...)
 		case status >= 300 && status <= 399:
-			buf = append(buf, p.theme.Highlight...)
+			buf = append(buf, state.theme.Highlight...)
 		case status >= 400 && status <= 499:
-			buf = append(buf, p.theme.Warn...)
+			buf = append(buf, state.theme.Warn...)
 		case status >= 500 && status <= 599:
-			buf = append(buf, p.theme.Error...)
+			buf = append(buf, state.theme.Error...)
 		}
 	}
 
@@ -82,7 +84,7 @@ func (p *Plain) LogRequest(request *http.Request, metrics *httpsnoop.Metrics) {
 		buf = append(buf, '0'+byte(status%10))
 	}
 
-	if p.color {
+	if state.color {
 		buf = append(buf, internal.AnsiReset...)
 	}
 
@@ -91,8 +93,8 @@ func (p *Plain) LogRequest(request *http.Request, metrics *httpsnoop.Metrics) {
 	buf = appendDuration(buf, metrics.Duration)
 	buf = append(buf, ' ')
 
-	if p.color {
-		buf = append(buf, p.theme.Dimmed...)
+	if state.color {
+		buf = append(buf, state.theme.Dimmed...)
 	}
 
 	addr := request.RemoteAddr
@@ -104,13 +106,13 @@ func (p *Plain) LogRequest(request *http.Request, metrics *httpsnoop.Metrics) {
 
 	buf = append(buf, addr...)
 
-	if p.color {
+	if state.color {
 		buf = append(buf, internal.AnsiReset...)
 	}
 
 	buf = append(buf, '\n')
 
-	p.out.Write(buf)
+	p.writeBytes(state.out, buf)
 
 	if cap(buf) <= 4096 {
 		*bp = buf

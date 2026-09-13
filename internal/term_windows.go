@@ -37,7 +37,7 @@ func DetectColorLevel(fd int) int {
 
 	termVal := os.Getenv("TERM")
 	if strings.Contains(termVal, "256") {
-		return ModeFull
+		return Mode8Bit
 	}
 
 	if termVal == "xterm" || termVal == "cygwin" {

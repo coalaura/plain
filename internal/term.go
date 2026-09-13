@@ -59,6 +59,8 @@ func ReadCtx[T any](ctx context.Context, t *Terminal, readFn func(*Terminal) (T,
 
 	select {
 	case <-ctx.Done():
+		t.Close()
+
 		return zero, ErrInterrupted
 	case res := <-resCh:
 		return res.Val, res.Err
@@ -214,6 +216,10 @@ func (t *Terminal) Close() {
 
 	if t.restore != nil {
 		t.restore()
+	}
+
+	if t.file != nil {
+		t.file.Close()
 	}
 }
 

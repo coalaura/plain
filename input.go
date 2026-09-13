@@ -34,6 +34,10 @@ func (p *Plain) Read(prompt string, max int) (string, error) {
 	p.readLock.Lock()
 	defer p.readLock.Unlock()
 
+	state := p.outputState()
+
+	out := outputWriter{plain: p, target: state.out}
+
 	if max < 0 {
 		panic("plain: negative maximum input length")
 	}
@@ -55,13 +59,13 @@ func (p *Plain) Read(prompt string, max int) (string, error) {
 
 	buf = append(buf, prompt...)
 
-	if p.color {
-		buf = append(buf, p.theme.Input...)
+	if state.color {
+		buf = append(buf, state.theme.Input...)
 
-		defer io.WriteString(p.out, internal.AnsiReset)
+		defer io.WriteString(out, internal.AnsiReset)
 	}
 
-	p.out.Write(buf)
+	out.Write(buf)
 
 	res := p.readBuf
 	if cap(res) < max {
@@ -96,6 +100,10 @@ func (p *Plain) ReadHidden(prompt string) (string, error) {
 	p.readLock.Lock()
 	defer p.readLock.Unlock()
 
+	state := p.outputState()
+
+	out := outputWriter{plain: p, target: state.out}
+
 	bp := pool.Get().(*[]byte)
 	buf := *bp
 	buf = buf[:0]
@@ -112,13 +120,13 @@ func (p *Plain) ReadHidden(prompt string) (string, error) {
 
 	buf = append(buf, prompt...)
 
-	if p.color {
-		buf = append(buf, p.theme.Input...)
+	if state.color {
+		buf = append(buf, state.theme.Input...)
 
-		defer io.WriteString(p.out, internal.AnsiReset)
+		defer io.WriteString(out, internal.AnsiReset)
 	}
 
-	p.out.Write(buf)
+	out.Write(buf)
 
 	term, err := internal.OpenTTY(false)
 	if err != nil {
@@ -132,12 +140,12 @@ func (p *Plain) ReadHidden(prompt string) (string, error) {
 
 	line, err := internal.ReadCtx(ctx, term, (*internal.Terminal).ReadLine)
 	if err != nil {
-		io.WriteString(p.out, "\n")
+		io.WriteString(out, "\n")
 
 		return "", err
 	}
 
-	io.WriteString(p.out, "\n")
+	io.WriteString(out, "\n")
 
 	return string(line), nil
 }
@@ -146,6 +154,10 @@ func (p *Plain) ReadHidden(prompt string) (string, error) {
 func (p *Plain) ReadMask(prompt string, mask rune) (string, error) {
 	p.readLock.Lock()
 	defer p.readLock.Unlock()
+
+	state := p.outputState()
+
+	out := outputWriter{plain: p, target: state.out}
 
 	bp := pool.Get().(*[]byte)
 	buf := *bp
@@ -163,13 +175,13 @@ func (p *Plain) ReadMask(prompt string, mask rune) (string, error) {
 
 	buf = append(buf, prompt...)
 
-	if p.color {
-		buf = append(buf, p.theme.Input...)
+	if state.color {
+		buf = append(buf, state.theme.Input...)
 
-		defer io.WriteString(p.out, internal.AnsiReset)
+		defer io.WriteString(out, internal.AnsiReset)
 	}
 
-	p.out.Write(buf)
+	out.Write(buf)
 
 	term, err := internal.OpenTTY(false)
 	if err != nil {
@@ -182,16 +194,16 @@ func (p *Plain) ReadMask(prompt string, mask rune) (string, error) {
 	defer stop()
 
 	line, err := internal.ReadCtx(ctx, term, func(t *internal.Terminal) ([]byte, error) {
-		return t.ReadMasked(p.out, mask)
+		return t.ReadMasked(out, mask)
 	})
 
 	if err != nil {
-		io.WriteString(p.out, "\n")
+		io.WriteString(out, "\n")
 
 		return "", err
 	}
 
-	io.WriteString(p.out, "\n")
+	io.WriteString(out, "\n")
 
 	return string(line), nil
 }
@@ -200,6 +212,10 @@ func (p *Plain) ReadMask(prompt string, mask rune) (string, error) {
 func (p *Plain) ReadOne(prompt string, echo bool) (rune, error) {
 	p.readLock.Lock()
 	defer p.readLock.Unlock()
+
+	state := p.outputState()
+
+	out := outputWriter{plain: p, target: state.out}
 
 	bp := pool.Get().(*[]byte)
 
@@ -216,9 +232,9 @@ func (p *Plain) ReadOne(prompt string, echo bool) (rune, error) {
 
 	buf = append(buf, prompt...)
 
-	p.out.Write(buf)
+	out.Write(buf)
 
-	defer io.WriteString(p.out, "\n")
+	defer io.WriteString(out, "\n")
 
 	term, err := internal.OpenTTY(false)
 	if err != nil {
@@ -238,17 +254,17 @@ func (p *Plain) ReadOne(prompt string, echo bool) (rune, error) {
 	if echo {
 		buf = buf[:0]
 
-		if p.color {
-			buf = append(buf, p.theme.Input...)
+		if state.color {
+			buf = append(buf, state.theme.Input...)
 		}
 
 		buf = append(buf, byte(b))
 
-		if p.color {
+		if state.color {
 			buf = append(buf, internal.AnsiReset...)
 		}
 
-		p.out.Write(buf)
+		out.Write(buf)
 	}
 
 	return b, nil
@@ -263,6 +279,10 @@ func (p *Plain) confirm(prompt string, defaultYes, echo bool, prefix string) (bo
 
 	p.readLock.Lock()
 	defer p.readLock.Unlock()
+
+	state := p.outputState()
+
+	out := outputWriter{plain: p, target: state.out}
 
 	bp := pool.Get().(*[]byte)
 
@@ -280,7 +300,7 @@ func (p *Plain) confirm(prompt string, defaultYes, echo bool, prefix string) (bo
 	buf = append(buf, prompt...)
 	buf = append(buf, suffix...)
 
-	p.out.Write(buf)
+	out.Write(buf)
 
 	term, err := internal.OpenTTY(false)
 	if err != nil {
@@ -300,7 +320,7 @@ func (p *Plain) confirm(prompt string, defaultYes, echo bool, prefix string) (bo
 	for !done {
 		b, err := internal.ReadCtx(ctx, term, (*internal.Terminal).ReadKey)
 		if err != nil {
-			io.WriteString(p.out, "\n")
+			io.WriteString(out, "\n")
 
 			return false, err
 		}
@@ -324,8 +344,8 @@ func (p *Plain) confirm(prompt string, defaultYes, echo bool, prefix string) (bo
 			buf = append(buf, prefix...)
 		}
 
-		if p.color {
-			buf = append(buf, p.theme.Input...)
+		if state.color {
+			buf = append(buf, state.theme.Input...)
 		}
 
 		if result {
@@ -334,14 +354,14 @@ func (p *Plain) confirm(prompt string, defaultYes, echo bool, prefix string) (bo
 			buf = append(buf, byte('n'))
 		}
 
-		if p.color {
+		if state.color {
 			buf = append(buf, internal.AnsiReset...)
 		}
 
-		p.out.Write(buf)
+		out.Write(buf)
 	}
 
-	io.WriteString(p.out, "\n")
+	io.WriteString(out, "\n")
 
 	return result, nil
 }
@@ -379,6 +399,10 @@ func (p *Plain) selectOption(prompt string, optionCount int, showDescription boo
 
 	p.readLock.Lock()
 	defer p.readLock.Unlock()
+
+	state := p.outputState()
+
+	out := outputWriter{plain: p, target: state.out}
 
 	index := 0
 
@@ -436,9 +460,10 @@ func (p *Plain) selectOption(prompt string, optionCount int, showDescription boo
 		_, description := optionAt(index)
 
 		buf = buf[:0]
-		buf = p.appendSelectDescription(buf, description, false)
 
-		p.out.Write(buf)
+		buf = p.appendSelectDescription(buf, description, false, state.color, state.theme)
+
+		out.Write(buf)
 	}()
 
 	redraw := true
@@ -468,7 +493,7 @@ func (p *Plain) selectOption(prompt string, optionCount int, showDescription boo
 					}
 				case internal.Enter:
 					if !showDescription {
-						p.out.Write([]byte("\n"))
+						out.Write([]byte("\n"))
 					}
 
 					return index, nil
@@ -503,34 +528,34 @@ func (p *Plain) selectOption(prompt string, optionCount int, showDescription boo
 
 		label = truncateSelectText(label, availableSelectWidth(usedWidth))
 
-		if p.color {
+		if state.color {
 			buf = append(buf, internal.AnsiReset...)
 		}
 
 		buf = append(buf, prompt...)
 
-		if p.color {
-			buf = append(buf, p.theme.Input...)
+		if state.color {
+			buf = append(buf, state.theme.Input...)
 		}
 
 		buf = append(buf, label...)
 
-		if p.color {
+		if state.color {
 			buf = append(buf, internal.AnsiReset...)
 		}
 
 		if showDescription {
-			buf = p.appendSelectDescription(buf, description, true)
+			buf = p.appendSelectDescription(buf, description, true, state.color, state.theme)
 		}
 
-		p.out.Write(buf)
+		out.Write(buf)
 
 		rendered = true
 		redraw = false
 	}
 }
 
-func (p *Plain) appendSelectDescription(dst []byte, description string, returnToSelect bool) []byte {
+func (p *Plain) appendSelectDescription(dst []byte, description string, returnToSelect, colored bool, theme Theme) []byte {
 	dst = append(dst, "\n\r\x1b[J"...)
 
 	lineStart := len(dst)
@@ -541,13 +566,13 @@ func (p *Plain) appendSelectDescription(dst []byte, description string, returnTo
 
 	description = truncateSelectText(description, availableSelectWidth(usedWidth))
 
-	if p.color {
-		dst = append(dst, p.theme.Dimmed...)
+	if colored {
+		dst = append(dst, theme.Dimmed...)
 	}
 
 	dst = append(dst, description...)
 
-	if p.color {
+	if colored {
 		dst = append(dst, internal.AnsiReset...)
 	}
 
