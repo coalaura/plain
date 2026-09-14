@@ -10,6 +10,11 @@ func TestMinimal(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	err = m.Stepln("Hello from Stepln")
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	err = m.Infoln("Hello from Infoln")
 	if err != nil {
 		t.Fatal(err)

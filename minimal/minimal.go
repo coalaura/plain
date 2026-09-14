@@ -13,6 +13,7 @@ import (
 
 const (
 	AnsiSub     = "\033[90m"
+	AnsiStep    = "\033[94m"
 	AnsiInfo    = "\033[36m"
 	AnsiSuccess = "\033[32m"
 	AnsiWarn    = "\033[33m"
@@ -20,6 +21,7 @@ const (
 	AnsiReset   = internal.AnsiReset
 
 	prefixSub     = "   -> "
+	prefixStep    = "  > "
 	prefixInfo    = ":: "
 	prefixSuccess = ":: "
 	prefixWarn    = "?? "

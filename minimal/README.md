@@ -10,13 +10,14 @@
 log := minimal.New()
 
 _ = log.Infof("building %s\n", target)
+_ = log.Stepln("compiling packages")
 _ = log.Subln("generated configuration")
 _ = log.Successln("build complete")
 _ = log.Warnln("cache unavailable")
 _ = log.Errorln("build failed")
 ```
 
-`Info`, `Success`, `Warn` and `Sub` write to stdout by default. `Error` writes to stderr. The `f` methods do not add a newline; use a newline in the format or use the corresponding `ln` method.
+`Info`, `Step`, `Success`, `Warn` and `Sub` write to stdout by default. `Error` writes to stderr. The `f` methods do not add a newline; use a newline in the format or use the corresponding `ln` method.
 
 ## Configuration
 

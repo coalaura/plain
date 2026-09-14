@@ -17,6 +17,21 @@ func (m *Minimal) Subln(a ...any) error {
 	return m.writeArgsLine(false, true, AnsiSub, prefixSub, a...)
 }
 
+// Step writes its operands to the standard target as a step message.
+func (m *Minimal) Step(a ...any) error {
+	return m.writeArgs(false, false, AnsiStep, prefixStep, a...)
+}
+
+// Stepf formats according to a format specifier and writes to the standard target as a step message.
+func (m *Minimal) Stepf(format string, a ...any) error {
+	return m.writeFormat(false, false, AnsiStep, prefixStep, format, a...)
+}
+
+// Stepln writes its operands to the standard target as a step message with a trailing newline.
+func (m *Minimal) Stepln(a ...any) error {
+	return m.writeArgsLine(false, false, AnsiStep, prefixStep, a...)
+}
+
 // Info writes its operands to the standard target as an info message.
 func (m *Minimal) Info(a ...any) error {
 	return m.writeArgs(false, false, AnsiInfo, prefixInfo, a...)
