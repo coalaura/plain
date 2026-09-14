@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/coalaura/atom"
+	"github.com/coalaura/plain/ansi"
 	"github.com/coalaura/plain/internal"
 	"golang.org/x/term"
 )
@@ -40,6 +41,8 @@ const (
 	Error
 	Reset
 )
+
+const AnsiReset = ansi.AnsiReset
 
 // Theme defines the ANSI color sequences used by the logger
 type Theme struct {
@@ -127,7 +130,7 @@ func (p *Plain) Theme(c themeColor) string {
 		return ""
 	}
 
-	return internal.AnsiReset
+	return AnsiReset
 }
 
 // WaitForInterrupt blocks until SIGINT or SIGTERM is received
@@ -204,11 +207,11 @@ func (p *Plain) writeString(code, msg string, reset, noHeader bool) {
 	buf = append(buf, msg...)
 
 	if state.color && reset {
-		buf = append(buf, internal.AnsiReset...)
+		buf = append(buf, AnsiReset...)
 	}
 
 	if !state.color && bytes.IndexByte(buf, '\x1b') >= 0 {
-		buf = internal.StripANSI(buf)
+		buf = ansi.StripANSI(buf)
 	}
 
 	p.writeBytes(state.out, buf)
@@ -248,13 +251,13 @@ func (p *Plain) writeLine(code, msg string, reset, noHeader bool) {
 	buf = append(buf, msg...)
 
 	if state.color && reset {
-		buf = append(buf, internal.AnsiReset...)
+		buf = append(buf, AnsiReset...)
 	}
 
 	buf = append(buf, '\n')
 
 	if !state.color && bytes.IndexByte(buf, '\x1b') >= 0 {
-		buf = internal.StripANSI(buf)
+		buf = ansi.StripANSI(buf)
 	}
 
 	p.writeBytes(state.out, buf)
@@ -289,11 +292,11 @@ func (p *Plain) writeArgs(code string, reset, nl bool, a ...any) {
 	}
 
 	if state.color && reset {
-		buf = append(buf, internal.AnsiReset...)
+		buf = append(buf, AnsiReset...)
 	}
 
 	if !state.color && bytes.IndexByte(buf, '\x1b') >= 0 {
-		buf = internal.StripANSI(buf)
+		buf = ansi.StripANSI(buf)
 	}
 
 	p.writeBytes(state.out, buf)
@@ -320,13 +323,13 @@ func (p *Plain) writeArgsLine(code string, reset bool, a ...any) {
 	}
 
 	if state.color && reset {
-		buf = append(buf, internal.AnsiReset...)
+		buf = append(buf, AnsiReset...)
 	}
 
 	buf = append(buf, '\n')
 
 	if !state.color && bytes.IndexByte(buf, '\x1b') >= 0 {
-		buf = internal.StripANSI(buf)
+		buf = ansi.StripANSI(buf)
 	}
 
 	p.writeBytes(state.out, buf)
@@ -363,11 +366,11 @@ func (p *Plain) writeFormat(code string, reset, nl bool, format string, a ...any
 	}
 
 	if state.color && reset {
-		buf = append(buf, internal.AnsiReset...)
+		buf = append(buf, AnsiReset...)
 	}
 
 	if !state.color && bytes.IndexByte(buf, '\x1b') >= 0 {
-		buf = internal.StripANSI(buf)
+		buf = ansi.StripANSI(buf)
 	}
 
 	p.writeBytes(state.out, buf)
@@ -396,13 +399,13 @@ func (p *Plain) writeFormatLine(code string, reset bool, format string, a ...any
 	}
 
 	if state.color && reset {
-		buf = append(buf, internal.AnsiReset...)
+		buf = append(buf, AnsiReset...)
 	}
 
 	buf = append(buf, '\n')
 
 	if !state.color && bytes.IndexByte(buf, '\x1b') >= 0 {
-		buf = internal.StripANSI(buf)
+		buf = ansi.StripANSI(buf)
 	}
 
 	p.writeBytes(state.out, buf)
@@ -437,7 +440,7 @@ func (p *Plain) appendHeader(dst []byte, code string, colored bool, theme Theme)
 		if code != "" {
 			dst = append(dst, code...)
 		} else {
-			dst = append(dst, internal.AnsiReset...)
+			dst = append(dst, AnsiReset...)
 		}
 	}
 
@@ -484,12 +487,12 @@ func detectWriterTheme(out io.Writer) (bool, int, Theme) {
 	}
 
 	theme := Theme{
-		Dimmed:    color(mode, "\x1b[90m", c256(244), rgb(145, 145, 145)),
-		Success:   color(mode, "\x1b[32m", c256(114), rgb(120, 210, 130)),
-		Highlight: color(mode, "\x1b[94m", c256(111), rgb(100, 180, 255)),
-		Input:     color(mode, "\x1b[36m", c256(152), rgb(130, 220, 220)),
-		Warn:      color(mode, "\x1b[33m", c256(215), rgb(255, 190, 80)),
-		Error:     color(mode, "\x1b[31m", c256(210), rgb(255, 110, 110)),
+		Dimmed:    color(mode, ansi.AnsiHiBlack, c256(244), rgb(145, 145, 145)),
+		Success:   color(mode, ansi.AnsiGreen, c256(114), rgb(120, 210, 130)),
+		Highlight: color(mode, ansi.AnsiHiBlue, c256(111), rgb(100, 180, 255)),
+		Input:     color(mode, ansi.AnsiCyan, c256(152), rgb(130, 220, 220)),
+		Warn:      color(mode, ansi.AnsiYellow, c256(215), rgb(255, 190, 80)),
+		Error:     color(mode, ansi.AnsiRed, c256(210), rgb(255, 110, 110)),
 	}
 
 	return true, mode, theme

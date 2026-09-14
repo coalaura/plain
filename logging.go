@@ -2,8 +2,6 @@ package plain
 
 import (
 	"os"
-
-	"github.com/coalaura/plain/internal"
 )
 
 // Debugf formats according to a format specifier and writes to the target output as a debug log.
@@ -39,7 +37,7 @@ func (p *Plain) Printf(format string, a ...any) {
 		return
 	}
 
-	p.writeFormat(internal.AnsiReset, true, false, format, a...)
+	p.writeFormat(AnsiReset, true, false, format, a...)
 }
 
 // Print formats using the default formats for its operands and writes to the target output.
@@ -48,7 +46,7 @@ func (p *Plain) Print(a ...any) {
 		return
 	}
 
-	p.writeArgs(internal.AnsiReset, true, false, a...)
+	p.writeArgs(AnsiReset, true, false, a...)
 }
 
 // Println formats using the default formats for its operands and writes to the target output with a trailing newline.
@@ -57,7 +55,7 @@ func (p *Plain) Println(a ...any) {
 		return
 	}
 
-	p.writeArgsLine(internal.AnsiReset, true, a...)
+	p.writeArgsLine(AnsiReset, true, a...)
 }
 
 // Warnf formats according to a format specifier and writes to the target output as a warning.

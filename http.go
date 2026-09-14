@@ -6,7 +6,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/coalaura/plain/internal"
 	"github.com/felixge/httpsnoop"
 )
 
@@ -32,7 +31,7 @@ func (p *Plain) LogRequest(request *http.Request, metrics *httpsnoop.Metrics) {
 	buf := *bp
 	buf = buf[:0]
 
-	buf = p.appendHeader(buf, internal.AnsiReset, state.color, state.theme)
+	buf = p.appendHeader(buf, AnsiReset, state.color, state.theme)
 
 	if state.color {
 		buf = append(buf, state.theme.Highlight...)
@@ -42,7 +41,7 @@ func (p *Plain) LogRequest(request *http.Request, metrics *httpsnoop.Metrics) {
 	buf = append(buf, method...)
 
 	if state.color {
-		buf = append(buf, internal.AnsiReset...)
+		buf = append(buf, AnsiReset...)
 	}
 
 	l := len(method)
@@ -85,7 +84,7 @@ func (p *Plain) LogRequest(request *http.Request, metrics *httpsnoop.Metrics) {
 	}
 
 	if state.color {
-		buf = append(buf, internal.AnsiReset...)
+		buf = append(buf, AnsiReset...)
 	}
 
 	buf = append(buf, ' ')
@@ -107,7 +106,7 @@ func (p *Plain) LogRequest(request *http.Request, metrics *httpsnoop.Metrics) {
 	buf = append(buf, addr...)
 
 	if state.color {
-		buf = append(buf, internal.AnsiReset...)
+		buf = append(buf, AnsiReset...)
 	}
 
 	buf = append(buf, '\n')

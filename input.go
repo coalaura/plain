@@ -62,7 +62,7 @@ func (p *Plain) Read(prompt string, max int) (string, error) {
 	if state.color {
 		buf = append(buf, state.theme.Input...)
 
-		defer io.WriteString(out, internal.AnsiReset)
+		defer io.WriteString(out, AnsiReset)
 	}
 
 	out.Write(buf)
@@ -123,7 +123,7 @@ func (p *Plain) ReadHidden(prompt string) (string, error) {
 	if state.color {
 		buf = append(buf, state.theme.Input...)
 
-		defer io.WriteString(out, internal.AnsiReset)
+		defer io.WriteString(out, AnsiReset)
 	}
 
 	out.Write(buf)
@@ -178,7 +178,7 @@ func (p *Plain) ReadMask(prompt string, mask rune) (string, error) {
 	if state.color {
 		buf = append(buf, state.theme.Input...)
 
-		defer io.WriteString(out, internal.AnsiReset)
+		defer io.WriteString(out, AnsiReset)
 	}
 
 	out.Write(buf)
@@ -261,7 +261,7 @@ func (p *Plain) ReadOne(prompt string, echo bool) (rune, error) {
 		buf = append(buf, byte(b))
 
 		if state.color {
-			buf = append(buf, internal.AnsiReset...)
+			buf = append(buf, AnsiReset...)
 		}
 
 		out.Write(buf)
@@ -355,7 +355,7 @@ func (p *Plain) confirm(prompt string, defaultYes, echo bool, prefix string) (bo
 		}
 
 		if state.color {
-			buf = append(buf, internal.AnsiReset...)
+			buf = append(buf, AnsiReset...)
 		}
 
 		out.Write(buf)
@@ -529,7 +529,7 @@ func (p *Plain) selectOption(prompt string, optionCount int, showDescription boo
 		label = truncateSelectText(label, availableSelectWidth(usedWidth))
 
 		if state.color {
-			buf = append(buf, internal.AnsiReset...)
+			buf = append(buf, AnsiReset...)
 		}
 
 		buf = append(buf, prompt...)
@@ -541,7 +541,7 @@ func (p *Plain) selectOption(prompt string, optionCount int, showDescription boo
 		buf = append(buf, label...)
 
 		if state.color {
-			buf = append(buf, internal.AnsiReset...)
+			buf = append(buf, AnsiReset...)
 		}
 
 		if showDescription {
@@ -573,7 +573,7 @@ func (p *Plain) appendSelectDescription(dst []byte, description string, returnTo
 	dst = append(dst, description...)
 
 	if colored {
-		dst = append(dst, internal.AnsiReset...)
+		dst = append(dst, AnsiReset...)
 	}
 
 	if returnToSelect {

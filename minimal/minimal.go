@@ -7,18 +7,19 @@ import (
 	"os"
 	"sync"
 
+	"github.com/coalaura/plain/ansi"
 	"github.com/coalaura/plain/internal"
 	"golang.org/x/term"
 )
 
 const (
-	AnsiSub     = "\033[90m"
-	AnsiStep    = "\033[94m"
-	AnsiInfo    = "\033[36m"
-	AnsiSuccess = "\033[32m"
-	AnsiWarn    = "\033[33m"
-	AnsiError   = "\033[31m"
-	AnsiReset   = internal.AnsiReset
+	AnsiSub     = ansi.AnsiHiBlack
+	AnsiStep    = ansi.AnsiHiBlue
+	AnsiInfo    = ansi.AnsiCyan
+	AnsiSuccess = ansi.AnsiGreen
+	AnsiWarn    = ansi.AnsiYellow
+	AnsiError   = ansi.AnsiRed
+	AnsiReset   = ansi.AnsiReset
 
 	prefixSub     = "   -> "
 	prefixStep    = "  > "
@@ -191,7 +192,7 @@ func finishMessage(dst []byte, colored, colorMessage bool, code, prefix string) 
 
 func stripColor(buf []byte, colored bool) []byte {
 	if !colored && bytes.IndexByte(buf, '\x1b') >= 0 {
-		return internal.StripANSI(buf)
+		return ansi.StripANSI(buf)
 	}
 
 	return buf
