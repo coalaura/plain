@@ -85,7 +85,24 @@ pl := plain.New()
 mux := http.NewServeMux()
 // ...
 
-http.ListenAndServe(":8080", pl.Middleware()(mux))
+handler := pl.Middleware()(mux)
+
+handler = plain.RealIPMiddleware()(handler)
+
+http.ListenAndServe(":8080", handler)
+```
+
+`RealIPMiddleware` updates `http.Request.RemoteAddr` from the first valid `X-Real-IP` or `X-Forwarded-For` address. By default, forwarded headers are trusted only from `127.0.0.1`; configure the proxies and headers you trust when deploying behind another proxy:
+
+```go
+handler := pl.Middleware()(mux)
+
+handler = plain.RealIPMiddleware(
+	plain.WithTrustedProxies("10.0.0.0/8", "192.0.2.10"),
+	plain.WithTrustedHeaders(plain.HeaderXForwardedFor),
+)(handler)
+
+http.ListenAndServe(":8080", handler)
 ```
 
 ### Error helpers
