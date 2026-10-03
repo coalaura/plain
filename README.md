@@ -92,6 +92,12 @@ handler = plain.RealIPMiddleware()(handler)
 http.ListenAndServe(":8080", handler)
 ```
 
+Pass `WithHostAsPeer()` to log the incoming request's `Host` instead of its remote address, with the same port stripping. Options are applied once when creating the middleware.
+
+```go
+handler := pl.Middleware(plain.WithHostAsPeer())(mux)
+```
+
 `RealIPMiddleware` updates `http.Request.RemoteAddr` from the first valid `X-Real-IP` or `X-Forwarded-For` address. By default, forwarded headers are trusted only from `127.0.0.1`; configure the proxies and headers you trust when deploying behind another proxy:
 
 ```go

@@ -11,19 +11,35 @@ import (
 
 const padding = "      "
 
+type middlewareConfig struct {
+	hostAsPeer bool
+}
+
+type middlewareOption func(*middlewareConfig)
+
 // Middleware returns an http middleware that logs each request after it has been handled
-func (p *Plain) Middleware() func(http.Handler) http.Handler {
+func (p *Plain) Middleware(opts ...middlewareOption) func(http.Handler) http.Handler {
+	var cfg middlewareConfig
+
+	for _, opt := range opts {
+		opt(&cfg)
+	}
+
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 			metrics := httpsnoop.CaptureMetrics(next, writer, request)
 
-			p.LogRequest(request, &metrics)
+			p.logRequest(request, &metrics, &cfg)
 		})
 	}
 }
 
 // LogRequest writes a single formatted access log line for request using the provided metrics
 func (p *Plain) LogRequest(request *http.Request, metrics *httpsnoop.Metrics) {
+	p.logRequest(request, metrics, nil)
+}
+
+func (p *Plain) logRequest(request *http.Request, metrics *httpsnoop.Metrics, cfg *middlewareConfig) {
 	state := p.outputState()
 
 	bp := pool.Get().(*[]byte)
@@ -96,7 +112,13 @@ func (p *Plain) LogRequest(request *http.Request, metrics *httpsnoop.Metrics) {
 		buf = append(buf, state.theme.Dimmed...)
 	}
 
-	addr := request.RemoteAddr
+	var addr string
+
+	if cfg != nil && cfg.hostAsPeer {
+		addr = request.Host
+	} else {
+		addr = request.RemoteAddr
+	}
 
 	idx := strings.LastIndexByte(addr, ':')
 	if idx != -1 {
@@ -116,6 +138,13 @@ func (p *Plain) LogRequest(request *http.Request, metrics *httpsnoop.Metrics) {
 	if cap(buf) <= 4096 {
 		*bp = buf
 		pool.Put(bp)
+	}
+}
+
+// WithHostAsPeer logs request.Host instead of the remote address, using the same port stripping.
+func WithHostAsPeer() middlewareOption {
+	return func(cfg *middlewareConfig) {
+		cfg.hostAsPeer = true
 	}
 }
 
