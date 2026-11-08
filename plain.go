@@ -138,7 +138,7 @@ func (p *Plain) WaitForInterrupt() {
 	internal.WaitForInterrupt(context.Background())
 }
 
-// WaitForInterrupt blocks until SIGINT or SIGTERM is received or the context is done
+// WaitForInterruptCtx blocks until SIGINT or SIGTERM is received or the context is done
 func (p *Plain) WaitForInterruptCtx(ctx context.Context) {
 	internal.WaitForInterrupt(ctx)
 }
