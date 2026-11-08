@@ -135,7 +135,12 @@ func (p *Plain) Theme(c themeColor) string {
 
 // WaitForInterrupt blocks until SIGINT or SIGTERM is received
 func (p *Plain) WaitForInterrupt() {
-	internal.WaitForInterrupt()
+	internal.WaitForInterrupt(context.Background())
+}
+
+// WaitForInterrupt blocks until SIGINT or SIGTERM is received or the context is done
+func (p *Plain) WaitForInterruptCtx(ctx context.Context) {
+	internal.WaitForInterrupt(ctx)
 }
 
 // OnSignal registers a non-blocking handler that executes the provided callback

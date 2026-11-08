@@ -7,9 +7,9 @@ import (
 	"syscall"
 )
 
-func WaitForInterrupt() {
-	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+func WaitForInterrupt(ctx context.Context) {
+	sCtx, cancel := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)
 	defer cancel()
 
-	<-ctx.Done()
+	<-sCtx.Done()
 }
